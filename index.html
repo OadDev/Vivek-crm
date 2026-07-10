@@ -1,0 +1,2553 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Communication Management System</title>
+
+<!-- Google Font: Inter -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Bootstrap 5 -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+<style>
+/* ==========================================================================
+   Communication Management System — Frontend Prototype
+   Design tokens
+   ========================================================================== */
+:root{
+  --font-sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+
+  --color-primary:#4F46E5;
+  --color-primary-dark:#4338CA;
+  --color-primary-light:#EEF2FF;
+  --color-success:#16A34A;
+  --color-success-light:#F0FDF4;
+  --color-warning:#D97706;
+  --color-warning-light:#FFFBEB;
+  --color-danger:#DC2626;
+  --color-danger-light:#FEF2F2;
+  --color-info:#0891B2;
+  --color-info-light:#ECFEFF;
+  --color-whatsapp:#128C7E;
+  --color-whatsapp-light:#E7F7F4;
+
+  --bg-body:#F5F6FA;
+  --bg-surface:#FFFFFF;
+  --bg-surface-2:#FAFBFC;
+  --bg-sidebar:#12131C;
+  --bg-sidebar-hover:#1D1F2E;
+  --bg-sidebar-active:#262A3D;
+
+  --text-primary:#111827;
+  --text-secondary:#667085;
+  --text-muted:#98A2B3;
+  --text-on-dark:#E4E5EA;
+  --text-on-dark-muted:#8A8D9E;
+
+  --border-color:#E7E9F0;
+  --border-color-strong:#D0D5DD;
+
+  --radius-lg:16px;
+  --radius-md:12px;
+  --radius-sm:8px;
+  --radius-xs:6px;
+
+  --shadow-xs:0 1px 2px rgba(16,24,40,.05);
+  --shadow-sm:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.04);
+  --shadow-md:0 4px 14px rgba(16,24,40,.08);
+  --shadow-lg:0 12px 32px rgba(16,24,40,.14);
+
+  --sidebar-w:264px;
+  --topbar-h:68px;
+  --transition-fast:.16s cubic-bezier(.4,0,.2,1);
+  --transition-med:.28s cubic-bezier(.4,0,.2,1);
+}
+
+[data-theme="dark"]{
+  --bg-body:#0D0E14;
+  --bg-surface:#171923;
+  --bg-surface-2:#1D1F2B;
+  --text-primary:#F0F1F5;
+  --text-secondary:#9AA0B3;
+  --text-muted:#6C7286;
+  --border-color:#282C3B;
+  --border-color-strong:#343850;
+  --color-primary-light:#1E1D3D;
+  --color-success-light:#0F2419;
+  --color-warning-light:#2A2013;
+  --color-danger-light:#2A1717;
+  --color-info-light:#0E2530;
+  --color-whatsapp-light:#0E211D;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.35);
+  --shadow-md:0 4px 14px rgba(0,0,0,.4);
+  --shadow-lg:0 16px 40px rgba(0,0,0,.5);
+}
+
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  font-family:var(--font-sans);
+  background:var(--bg-body);
+  color:var(--text-primary);
+  font-size:14.5px;
+  overflow-x:hidden;
+  transition:background var(--transition-med),color var(--transition-med);
+}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border-color-strong);border-radius:10px;}
+::-webkit-scrollbar-thumb:hover{background:var(--text-muted);}
+
+a{text-decoration:none;color:inherit;}
+h1,h2,h3,h4,h5,h6{font-weight:700;letter-spacing:-.01em;color:var(--text-primary);}
+small,.text-muted-c{color:var(--text-secondary)!important;}
+.fw-600{font-weight:600;}
+.fw-700{font-weight:700;}
+
+/* ==========================================================================
+   Page loader (top progress bar)
+   ========================================================================== */
+.page-loader{position:fixed;top:0;left:0;height:3px;width:0;background:var(--color-primary);z-index:2000;transition:width .25s ease,opacity .3s ease;box-shadow:0 0 8px rgba(79,70,229,.6);}
+.page-loader.active{width:70%;}
+.page-loader.done{width:100%;opacity:0;}
+
+/* ==========================================================================
+   Sidebar
+   ========================================================================== */
+.app-sidebar{
+  position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);
+  background:var(--bg-sidebar);
+  display:flex;flex-direction:column;
+  z-index:1050;
+  transition:transform var(--transition-med);
+}
+.sidebar-brand{
+  display:flex;align-items:center;gap:10px;
+  padding:20px 22px;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  flex-shrink:0;
+}
+.sidebar-brand .brand-mark{
+  width:36px;height:36px;border-radius:10px;background:var(--color-primary);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;flex-shrink:0;
+}
+.sidebar-brand .brand-text{color:#fff;font-weight:700;font-size:15.5px;line-height:1.2;}
+.sidebar-brand .brand-sub{color:var(--text-on-dark-muted);font-size:11px;font-weight:500;}
+
+.sidebar-nav{flex:1;overflow-y:auto;padding:14px 12px;}
+.sidebar-nav .nav-section-label{
+  color:var(--text-on-dark-muted);font-size:10.5px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;padding:14px 12px 8px;
+}
+.sidebar-link{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 12px;border-radius:var(--radius-sm);
+  color:var(--text-on-dark);font-weight:500;font-size:14px;
+  margin-bottom:2px;cursor:pointer;position:relative;
+  transition:background var(--transition-fast),color var(--transition-fast),transform var(--transition-fast);
+  border:1px solid transparent;
+}
+.sidebar-link i{font-size:17px;width:20px;text-align:center;color:var(--text-on-dark-muted);transition:color var(--transition-fast);}
+.sidebar-link:hover{background:var(--bg-sidebar-hover);transform:translateX(2px);}
+.sidebar-link:hover i{color:#fff;}
+.sidebar-link.active{background:var(--bg-sidebar-active);color:#fff;border-color:rgba(79,70,229,.35);}
+.sidebar-link.active i{color:var(--color-primary);}
+.sidebar-link.active::before{
+  content:'';position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--color-primary);
+}
+.sidebar-link .badge-count{
+  margin-left:auto;background:var(--color-primary);color:#fff;font-size:10.5px;font-weight:700;
+  border-radius:20px;padding:1px 8px;
+}
+.sidebar-link.logout-link{color:#FCA5A5;}
+.sidebar-link.logout-link i{color:#FCA5A5;}
+.sidebar-link.logout-link:hover{background:rgba(220,38,38,.15);}
+
+.sidebar-footer{padding:14px 18px;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0;}
+.sidebar-user{display:flex;align-items:center;gap:10px;}
+.sidebar-user .avatar-sm{width:36px;height:36px;border-radius:50%;}
+.sidebar-user .u-name{color:#fff;font-size:13.5px;font-weight:600;}
+.sidebar-user .u-role{color:var(--text-on-dark-muted);font-size:11.5px;}
+
+.sidebar-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1040;display:none;
+  backdrop-filter:blur(2px);
+}
+.sidebar-overlay.show{display:block;animation:fadeIn .2s ease;}
+
+/* ==========================================================================
+   Topbar
+   ========================================================================== */
+.app-topbar{
+  position:fixed;top:0;right:0;left:var(--sidebar-w);height:var(--topbar-h);
+  background:var(--bg-surface);border-bottom:1px solid var(--border-color);
+  display:flex;align-items:center;gap:14px;padding:0 22px;z-index:1030;
+  transition:left var(--transition-med),background var(--transition-med),border-color var(--transition-med);
+}
+.topbar-burger{
+  display:none;background:var(--bg-surface-2);border:1px solid var(--border-color);
+  width:38px;height:38px;border-radius:var(--radius-sm);align-items:center;justify-content:center;
+  color:var(--text-primary);font-size:18px;flex-shrink:0;cursor:pointer;
+}
+.topbar-search{
+  flex:1;max-width:440px;position:relative;
+}
+.topbar-search input{
+  width:100%;background:var(--bg-surface-2);border:1px solid var(--border-color);
+  border-radius:var(--radius-md);padding:9px 14px 9px 38px;font-size:13.5px;color:var(--text-primary);
+  transition:border-color var(--transition-fast),box-shadow var(--transition-fast),background var(--transition-fast);
+}
+.topbar-search input:focus{outline:none;border-color:var(--color-primary);box-shadow:0 0 0 3px var(--color-primary-light);background:var(--bg-surface);}
+.topbar-search i{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:15px;}
+.topbar-search kbd{
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10.5px;color:var(--text-muted);
+  background:var(--bg-body);border:1px solid var(--border-color);border-radius:5px;padding:1px 6px;
+}
+.topbar-spacer{flex:1;}
+.topbar-actions{display:flex;align-items:center;gap:8px;}
+.icon-btn{
+  width:40px;height:40px;border-radius:50%;border:1px solid var(--border-color);background:var(--bg-surface);
+  color:var(--text-secondary);display:flex;align-items:center;justify-content:center;font-size:17px;position:relative;
+  cursor:pointer;transition:all var(--transition-fast);
+}
+.icon-btn:hover{background:var(--color-primary-light);color:var(--color-primary);border-color:var(--color-primary);transform:translateY(-1px);}
+.icon-btn .dot-badge{
+  position:absolute;top:6px;right:7px;width:8px;height:8px;border-radius:50%;background:var(--color-danger);
+  border:2px solid var(--bg-surface);
+}
+.theme-toggle-btn i{transition:transform .4s ease;}
+.theme-toggle-btn:active i{transform:rotate(180deg);}
+
+.profile-chip{
+  display:flex;align-items:center;gap:9px;padding:5px 10px 5px 5px;border-radius:50px;
+  border:1px solid var(--border-color);background:var(--bg-surface);cursor:pointer;transition:all var(--transition-fast);
+}
+.profile-chip:hover{background:var(--bg-surface-2);border-color:var(--border-color-strong);}
+.profile-chip img{width:32px;height:32px;border-radius:50%;}
+.profile-chip .p-name{font-size:13px;font-weight:600;line-height:1.1;}
+.profile-chip .p-role{font-size:11px;color:var(--text-secondary);}
+
+/* ==========================================================================
+   Main layout
+   ========================================================================== */
+.app-main{margin-left:var(--sidebar-w);padding-top:var(--topbar-h);min-height:100vh;transition:margin-left var(--transition-med);}
+.main-inner{padding:26px 28px 60px;max-width:1520px;}
+
+.page-section{display:none;animation:fadeSlideUp .35s ease both;}
+.page-section.active{display:block;}
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+
+.page-header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:22px;}
+.page-title{font-size:23px;font-weight:800;margin:0;}
+.page-subtitle{color:var(--text-secondary);font-size:13.5px;margin-top:2px;}
+.breadcrumb-c{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-muted);margin-bottom:6px;}
+.breadcrumb-c i{font-size:10px;}
+.breadcrumb-c a{color:var(--text-secondary);font-weight:500;}
+.breadcrumb-c a:hover{color:var(--color-primary);}
+.breadcrumb-c .current{color:var(--text-primary);font-weight:600;}
+
+/* ==========================================================================
+   Cards & surfaces
+   ========================================================================== */
+.card-c{
+  background:var(--bg-surface);border:1px solid var(--border-color);border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-xs);transition:box-shadow var(--transition-fast),transform var(--transition-fast),border-color var(--transition-med),background var(--transition-med);
+}
+.card-c.hoverable:hover{box-shadow:var(--shadow-md);transform:translateY(-3px);border-color:var(--border-color-strong);}
+.card-c .card-c-body{padding:20px 22px;}
+
+.stat-card{padding:20px 20px;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden;}
+.stat-card .stat-icon{
+  width:44px;height:44px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;
+}
+.stat-card .stat-value{font-size:26px;font-weight:800;line-height:1;}
+.stat-card .stat-label{font-size:12.8px;color:var(--text-secondary);font-weight:500;margin-top:4px;}
+.stat-card .stat-trend{font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;width:fit-content;}
+.stat-trend.up{color:var(--color-success);background:var(--color-success-light);}
+.stat-trend.down{color:var(--color-danger);background:var(--color-danger-light);}
+
+.section-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.section-title-row h5{font-size:15.5px;margin:0;font-weight:700;}
+
+/* quick action */
+.quick-action-card{
+  display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:18px 16px;cursor:pointer;
+}
+.quick-action-card .qa-icon{
+  width:42px;height:42px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:19px;
+}
+.quick-action-card .qa-label{font-weight:600;font-size:13.6px;}
+.quick-action-card .qa-sub{font-size:11.6px;color:var(--text-secondary);}
+
+/* timeline */
+.timeline-item{display:flex;gap:14px;padding:13px 0;border-bottom:1px dashed var(--border-color);}
+.timeline-item:last-child{border-bottom:none;}
+.timeline-dot{
+  width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;
+}
+.timeline-text{font-size:13.4px;font-weight:500;}
+.timeline-time{font-size:11.6px;color:var(--text-muted);margin-top:2px;}
+
+/* charts (pure css) */
+.bar-chart{display:flex;align-items:flex-end;gap:10px;height:170px;padding-top:10px;}
+.bar-chart .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end;}
+.bar-chart .bar{
+  width:100%;max-width:30px;border-radius:6px 6px 3px 3px;background:var(--color-primary);
+  transition:transform .3s ease,opacity .3s ease;position:relative;
+}
+.bar-chart .bar:hover{opacity:.85;transform:scaleY(1.02);}
+.bar-chart .bar-lbl{font-size:11px;color:var(--text-muted);font-weight:600;}
+.donut-wrap{display:flex;align-items:center;gap:22px;flex-wrap:wrap;justify-content:center;}
+.donut{
+  width:140px;height:140px;border-radius:50%;position:relative;flex-shrink:0;
+  background:conic-gradient(var(--color-primary) 0% 42%, var(--color-success) 42% 68%, var(--color-warning) 68% 86%, var(--color-danger) 86% 100%);
+}
+.donut::after{content:'';position:absolute;inset:18px;border-radius:50%;background:var(--bg-surface);}
+.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.donut-center b{font-size:20px;}
+.donut-center span{font-size:10.5px;color:var(--text-secondary);}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:12.6px;margin-bottom:8px;}
+.legend-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+.btn{border-radius:var(--radius-sm);font-weight:600;font-size:13.4px;padding:.55rem 1rem;transition:all var(--transition-fast);}
+.btn-sm{padding:.36rem .75rem;font-size:12.6px;border-radius:var(--radius-xs);}
+.btn-primary-c{background:var(--color-primary);border:1px solid var(--color-primary);color:#fff;}
+.btn-primary-c:hover{background:var(--color-primary-dark);border-color:var(--color-primary-dark);color:#fff;transform:translateY(-1px);box-shadow:var(--shadow-sm);}
+.btn-outline-c{background:transparent;border:1px solid var(--border-color-strong);color:var(--text-primary);}
+.btn-outline-c:hover{background:var(--bg-surface-2);border-color:var(--text-secondary);}
+.btn-light-c{background:var(--bg-surface-2);border:1px solid var(--border-color);color:var(--text-primary);}
+.btn-light-c:hover{background:var(--border-color);}
+.btn-success-c{background:var(--color-success);border:1px solid var(--color-success);color:#fff;}
+.btn-success-c:hover{filter:brightness(.92);color:#fff;}
+.btn-danger-c{background:var(--color-danger);border:1px solid var(--color-danger);color:#fff;}
+.btn-danger-c:hover{filter:brightness(.92);color:#fff;}
+.btn-whatsapp-c{background:var(--color-whatsapp);border:1px solid var(--color-whatsapp);color:#fff;}
+.btn-whatsapp-c:hover{filter:brightness(.93);color:#fff;}
+.btn-icon-sq{
+  width:33px;height:33px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--radius-xs);
+  border:1px solid var(--border-color);background:var(--bg-surface);color:var(--text-secondary);
+}
+.btn-icon-sq:hover{background:var(--color-primary-light);color:var(--color-primary);border-color:var(--color-primary);}
+.btn-icon-sq.danger:hover{background:var(--color-danger-light);color:var(--color-danger);border-color:var(--color-danger);}
+.btn-icon-sq.success:hover{background:var(--color-success-light);color:var(--color-success);border-color:var(--color-success);}
+
+/* ==========================================================================
+   Forms / floating labels
+   ========================================================================== */
+.form-control,.form-select{
+  border-radius:var(--radius-sm);border:1px solid var(--border-color-strong);font-size:13.6px;padding:.62rem .85rem;
+  background:var(--bg-surface);color:var(--text-primary);
+}
+.form-control:focus,.form-select:focus{border-color:var(--color-primary);box-shadow:0 0 0 3px var(--color-primary-light);background:var(--bg-surface);color:var(--text-primary);}
+.form-floating>label{color:var(--text-muted);font-size:13.4px;}
+.form-floating>.form-control{padding-top:1.4rem;}
+.form-label{font-size:12.8px;font-weight:600;color:var(--text-secondary);margin-bottom:5px;}
+.input-group-text{background:var(--bg-surface-2);border-color:var(--border-color-strong);color:var(--text-muted);}
+
+/* ==========================================================================
+   Tables
+   ========================================================================== */
+.table-c{width:100%;border-collapse:separate;border-spacing:0;font-size:13.4px;}
+.table-c thead th{
+  background:var(--bg-surface-2);color:var(--text-secondary);font-weight:700;font-size:11.3px;
+  text-transform:uppercase;letter-spacing:.04em;padding:12px 16px;border-bottom:1px solid var(--border-color);white-space:nowrap;
+}
+.table-c thead th:first-child{border-top-left-radius:var(--radius-md);}
+.table-c thead th:last-child{border-top-right-radius:var(--radius-md);}
+.table-c tbody td{padding:13px 16px;border-bottom:1px solid var(--border-color);vertical-align:middle;color:var(--text-primary);}
+.table-c tbody tr{transition:background var(--transition-fast);}
+.table-c tbody tr:hover{background:var(--bg-surface-2);}
+.table-c tbody tr:last-child td{border-bottom:none;}
+.table-responsive-c{overflow-x:auto;border-radius:var(--radius-md);border:1px solid var(--border-color);}
+.avatar-circle{
+  width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:13px;color:#fff;flex-shrink:0;
+}
+.avatar-lg{width:88px;height:88px;font-size:28px;}
+.avatar-md{width:52px;height:52px;font-size:17px;}
+
+/* chips / badges */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.3px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+.chip i{font-size:8px;}
+.chip-success{background:var(--color-success-light);color:var(--color-success);}
+.chip-warning{background:var(--color-warning-light);color:var(--color-warning);}
+.chip-danger{background:var(--color-danger-light);color:var(--color-danger);}
+.chip-info{background:var(--color-info-light);color:var(--color-info);}
+.chip-neutral{background:var(--bg-surface-2);color:var(--text-secondary);border:1px solid var(--border-color);}
+.chip-primary{background:var(--color-primary-light);color:var(--color-primary);}
+
+/* ==========================================================================
+   Toolbars / filters
+   ========================================================================== */
+.toolbar-c{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px;}
+.toolbar-search{position:relative;flex:1;min-width:200px;max-width:320px;}
+.toolbar-search input{padding-left:36px;}
+.toolbar-search i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);}
+.filter-chip-group{display:flex;gap:6px;flex-wrap:wrap;}
+.filter-chip-btn{
+  border:1px solid var(--border-color-strong);background:var(--bg-surface);color:var(--text-secondary);font-size:12.4px;font-weight:600;
+  padding:6px 13px;border-radius:20px;cursor:pointer;transition:all var(--transition-fast);
+}
+.filter-chip-btn:hover{border-color:var(--color-primary);color:var(--color-primary);}
+.filter-chip-btn.active{background:var(--color-primary);border-color:var(--color-primary);color:#fff;}
+
+/* ==========================================================================
+   Gmail module
+   ========================================================================== */
+.gmail-shell{display:grid;grid-template-columns:200px 360px 1fr;gap:0;border:1px solid var(--border-color);border-radius:var(--radius-lg);overflow:hidden;background:var(--bg-surface);box-shadow:var(--shadow-xs);height:calc(100vh - var(--topbar-h) - 150px);min-height:560px;}
+.gmail-folders{border-right:1px solid var(--border-color);background:var(--bg-surface-2);padding:16px 10px;overflow-y:auto;}
+.gmail-folder-item{
+  display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius-sm);font-size:13.4px;font-weight:500;
+  cursor:pointer;margin-bottom:2px;color:var(--text-secondary);transition:all var(--transition-fast);
+}
+.gmail-folder-item i{font-size:16px;width:18px;}
+.gmail-folder-item:hover{background:var(--bg-surface);color:var(--text-primary);}
+.gmail-folder-item.active{background:var(--color-primary-light);color:var(--color-primary);font-weight:700;}
+.gmail-folder-item .cnt{margin-left:auto;font-size:11px;color:var(--text-muted);font-weight:700;}
+.gmail-folder-item.active .cnt{color:var(--color-primary);}
+.compose-btn-c{width:100%;margin-bottom:14px;}
+
+.gmail-list-pane{border-right:1px solid var(--border-color);display:flex;flex-direction:column;overflow:hidden;}
+.gmail-list-toolbar{padding:12px 14px;border-bottom:1px solid var(--border-color);flex-shrink:0;}
+.gmail-list-scroll{flex:1;overflow-y:auto;}
+.conv-item{
+  display:flex;gap:11px;padding:13px 14px;border-bottom:1px solid var(--border-color);cursor:pointer;position:relative;
+  transition:background var(--transition-fast);
+}
+.conv-item:hover{background:var(--bg-surface-2);}
+.conv-item.selected{background:var(--color-primary-light);}
+.conv-item.unread .conv-sender,.conv-item.unread .conv-subject{font-weight:700;color:var(--text-primary);}
+.conv-item .conv-body{flex:1;min-width:0;}
+.conv-top-row{display:flex;justify-content:space-between;align-items:center;gap:6px;}
+.conv-sender{font-size:13.3px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.conv-time{font-size:11px;color:var(--text-muted);flex-shrink:0;}
+.conv-subject{font-size:12.8px;color:var(--text-primary);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.conv-preview{font-size:12.2px;color:var(--text-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.conv-item .unread-dot{width:8px;height:8px;border-radius:50%;background:var(--color-primary);position:absolute;left:4px;top:22px;}
+.conv-star{color:var(--text-muted);font-size:15px;cursor:pointer;flex-shrink:0;}
+.conv-star.active{color:#F5A623;}
+.conv-star:hover{color:#F5A623;}
+
+.gmail-preview-pane{display:flex;flex-direction:column;overflow:hidden;}
+.gmail-preview-header{padding:16px 22px;border-bottom:1px solid var(--border-color);flex-shrink:0;}
+.gmail-preview-body{flex:1;overflow-y:auto;padding:18px 22px;}
+.gmail-preview-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-muted);gap:10px;}
+.thread-message{border:1px solid var(--border-color);border-radius:var(--radius-md);margin-bottom:14px;overflow:hidden;}
+.thread-message-head{display:flex;gap:12px;padding:14px 16px;background:var(--bg-surface-2);cursor:pointer;}
+.thread-message-body{padding:16px;font-size:13.6px;line-height:1.7;color:var(--text-primary);border-top:1px solid var(--border-color);}
+.reply-box{border-top:1px solid var(--border-color);padding:14px 22px 18px;flex-shrink:0;}
+.rich-toolbar{display:flex;gap:2px;padding:6px;border:1px solid var(--border-color-strong);border-bottom:none;border-radius:var(--radius-sm) var(--radius-sm) 0 0;background:var(--bg-surface-2);flex-wrap:wrap;}
+.rich-toolbar button{
+  width:30px;height:30px;border:none;background:transparent;border-radius:6px;color:var(--text-secondary);font-size:14px;cursor:pointer;
+}
+.rich-toolbar button:hover{background:var(--border-color);color:var(--text-primary);}
+.reply-textarea{border-radius:0 0 var(--radius-sm) var(--radius-sm);border-top:none;min-height:100px;resize:vertical;}
+
+/* ==========================================================================
+   Modals
+   ========================================================================== */
+.modal-content{border-radius:var(--radius-lg);border:none;box-shadow:var(--shadow-lg);background:var(--bg-surface);color:var(--text-primary);}
+.modal-header{border-bottom:1px solid var(--border-color);padding:18px 24px;}
+.modal-title{font-weight:700;font-size:16.5px;}
+.modal-body{padding:22px 24px;}
+.modal-footer{border-top:1px solid var(--border-color);padding:16px 24px;}
+.btn-close{filter:var(--btnclose-filter,none);}
+[data-theme="dark"] .btn-close{filter:invert(1) grayscale(1) brightness(1.8);}
+
+/* ==========================================================================
+   Toasts
+   ========================================================================== */
+.toast{border-radius:var(--radius-md);border:1px solid var(--border-color);box-shadow:var(--shadow-md);background:var(--bg-surface);}
+.toast-header{background:transparent;border-bottom:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-md) var(--radius-md) 0 0;}
+.toast-body{color:var(--text-secondary);font-size:13px;}
+
+/* ==========================================================================
+   Nav tabs (contact profile)
+   ========================================================================== */
+.nav-tabs-c{border-bottom:1px solid var(--border-color);gap:4px;}
+.nav-tabs-c .nav-link{
+  border:none;color:var(--text-secondary);font-weight:600;font-size:13.6px;padding:10px 16px;border-radius:var(--radius-sm) var(--radius-sm) 0 0;
+}
+.nav-tabs-c .nav-link:hover{color:var(--color-primary);background:var(--color-primary-light);}
+.nav-tabs-c .nav-link.active{color:var(--color-primary);background:var(--color-primary-light);border-bottom:2px solid var(--color-primary);}
+
+/* ==========================================================================
+   Skeleton loaders
+   ========================================================================== */
+.skeleton{background:linear-gradient(90deg,var(--border-color) 25%,var(--bg-surface-2) 37%,var(--border-color) 63%);background-size:400% 100%;animation:skeleton-loading 1.4s ease infinite;border-radius:8px;}
+@keyframes skeleton-loading{0%{background-position:100% 50%;}100%{background-position:0 50%;}}
+
+/* ==========================================================================
+   Empty states
+   ========================================================================== */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 20px;text-align:center;color:var(--text-muted);}
+.empty-state .es-icon{width:64px;height:64px;border-radius:50%;background:var(--bg-surface-2);display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:14px;color:var(--text-muted);}
+.empty-state h6{color:var(--text-primary);font-weight:700;margin-bottom:4px;}
+.empty-state p{font-size:12.8px;max-width:320px;}
+
+/* ==========================================================================
+   Pagination
+   ========================================================================== */
+.pagination-c{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 4px 0;flex-wrap:wrap;}
+.pagination-c .p-info{font-size:12.4px;color:var(--text-secondary);}
+.pagination-c .p-btns{display:flex;gap:4px;}
+.pagination-c .p-btn{
+  width:32px;height:32px;border-radius:var(--radius-xs);border:1px solid var(--border-color);background:var(--bg-surface);
+  color:var(--text-secondary);font-size:12.6px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+.pagination-c .p-btn:hover{border-color:var(--color-primary);color:var(--color-primary);}
+.pagination-c .p-btn.active{background:var(--color-primary);border-color:var(--color-primary);color:#fff;}
+
+/* ==========================================================================
+   WhatsApp templates
+   ========================================================================== */
+.template-card{padding:18px 18px;display:flex;flex-direction:column;gap:10px;}
+.template-card .tpl-icon{width:38px;height:38px;border-radius:10px;background:var(--color-whatsapp-light);color:var(--color-whatsapp);display:flex;align-items:center;justify-content:center;font-size:18px;}
+.template-card .tpl-name{font-weight:700;font-size:14.5px;}
+.template-card .tpl-preview{font-size:12.6px;color:var(--text-secondary);line-height:1.55;min-height:56px;}
+.wa-bubble{background:var(--color-whatsapp-light);border-radius:12px 12px 12px 3px;padding:12px 14px;font-size:13.2px;line-height:1.6;color:var(--text-primary);position:relative;}
+.wa-phone-frame{background:#0b0b0e;border-radius:28px;padding:10px;width:260px;margin:0 auto;box-shadow:var(--shadow-lg);}
+.wa-phone-screen{background:#E5DDD5;border-radius:20px;min-height:360px;padding:14px 10px;position:relative;overflow:hidden;}
+[data-theme="dark"] .wa-phone-screen{background:#0b141a;}
+
+/* ==========================================================================
+   Settings
+   ========================================================================== */
+.settings-card-icon{width:40px;height:40px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.form-switch .form-check-input{width:2.4em;height:1.3em;}
+.form-check-input:checked{background-color:var(--color-primary);border-color:var(--color-primary);}
+
+/* ==========================================================================
+   Misc utils
+   ========================================================================== */
+.divider-v{width:1px;background:var(--border-color);align-self:stretch;}
+.tooltip-inner{font-size:11.5px;border-radius:6px;}
+.cursor-pointer{cursor:pointer;}
+.text-trunc-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.placeholder-btn{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;border:1px dashed var(--color-primary);color:var(--color-primary);background:var(--color-primary-light);cursor:pointer;}
+.placeholder-btn:hover{background:var(--color-primary);color:#fff;}
+.dropdown-menu{border-radius:var(--radius-md);border:1px solid var(--border-color);box-shadow:var(--shadow-md);padding:8px;background:var(--bg-surface);}
+.dropdown-item{border-radius:var(--radius-xs);font-size:13.2px;padding:8px 10px;color:var(--text-primary);}
+.dropdown-item:hover{background:var(--color-primary-light);color:var(--color-primary);}
+.dropdown-item i{width:18px;}
+.notif-item{display:flex;gap:10px;padding:10px 8px;border-radius:var(--radius-sm);}
+.notif-item:hover{background:var(--bg-surface-2);}
+.notif-dot{width:8px;height:8px;border-radius:50%;background:var(--color-primary);flex-shrink:0;margin-top:6px;}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+@media (max-width:1200px){
+  .gmail-shell{grid-template-columns:170px 300px 1fr;}
+}
+@media (max-width:991px){
+  .app-sidebar{transform:translateX(-100%);}
+  .app-sidebar.show{transform:translateX(0);box-shadow:var(--shadow-lg);}
+  .app-main{margin-left:0;}
+  .app-topbar{left:0;}
+  .topbar-burger{display:flex;}
+  .gmail-shell{grid-template-columns:1fr;height:auto;}
+  .gmail-folders{display:none;}
+  .gmail-list-pane,.gmail-preview-pane{border-right:none;}
+  .gmail-shell.show-preview .gmail-list-pane{display:none;}
+  .gmail-shell:not(.show-preview) .gmail-preview-pane{display:none;}
+}
+@media (max-width:767px){
+  .main-inner{padding:18px 14px 50px;}
+  .topbar-search{max-width:none;}
+  .profile-chip .p-text{display:none;}
+  .page-title{font-size:19px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     PAGE LOADER
+     ============================================================ -->
+<div class="page-loader" id="pageLoader"></div>
+
+<!-- ============================================================
+     SIDEBAR
+     ============================================================ -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="app-sidebar" id="appSidebar">
+  <div class="sidebar-brand">
+    <div class="brand-mark"><i class="bi bi-chat-dots-fill"></i></div>
+    <div>
+      <div class="brand-text">CommsHub</div>
+      <div class="brand-sub">Communication Management</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav" id="sidebarNav">
+    <div class="nav-section-label">Main</div>
+    <div class="sidebar-link active" data-nav="dashboard"><i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span></div>
+    <div class="sidebar-link" data-nav="gmail"><i class="bi bi-envelope-fill"></i><span>Gmail Inbox</span><span class="badge-count" id="navUnreadBadge">5</span></div>
+    <div class="sidebar-link" data-nav="contacts"><i class="bi bi-person-lines-fill"></i><span>Contacts</span></div>
+    <div class="sidebar-link" data-nav="whatsapp"><i class="bi bi-whatsapp"></i><span>WhatsApp Templates</span></div>
+    <div class="sidebar-link" data-nav="products"><i class="bi bi-box-seam-fill"></i><span>Product Master</span></div>
+
+    <div class="nav-section-label">Account</div>
+    <div class="sidebar-link" data-nav="settings"><i class="bi bi-gear-fill"></i><span>Settings</span></div>
+    <div class="sidebar-link logout-link" id="logoutLink"><i class="bi bi-box-arrow-right"></i><span>Logout</span></div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <img src="https://ui-avatars.com/api/?name=Seva+Verma&background=4F46E5&color=fff&bold=true" class="avatar-sm" alt="User">
+      <div>
+        <div class="u-name">Seva Verma</div>
+        <div class="u-role">Administrator</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ============================================================
+     TOPBAR
+     ============================================================ -->
+<header class="app-topbar">
+  <button class="topbar-burger" id="burgerBtn" aria-label="Toggle sidebar"><i class="bi bi-list"></i></button>
+
+  <div class="topbar-search">
+    <i class="bi bi-search"></i>
+    <input type="text" id="globalSearchInput" placeholder="Search contacts, emails, products..." autocomplete="off">
+    <kbd class="d-none d-md-inline">⌘K</kbd>
+  </div>
+
+  <div class="topbar-spacer"></div>
+
+  <div class="topbar-actions">
+    <button class="icon-btn theme-toggle-btn" id="themeToggleBtn" title="Toggle theme" data-bs-toggle="tooltip">
+      <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
+    </button>
+
+    <div class="dropdown">
+      <button class="icon-btn" data-bs-toggle="dropdown" title="Notifications">
+        <i class="bi bi-bell-fill"></i><span class="dot-badge"></span>
+      </button>
+      <div class="dropdown-menu dropdown-menu-end" style="width:320px;">
+        <div class="d-flex justify-content-between align-items-center px-2 pb-2">
+          <strong style="font-size:13.5px;">Notifications</strong>
+          <span class="chip chip-primary">4 New</span>
+        </div>
+        <div class="notif-item">
+          <div class="notif-dot"></div>
+          <div><div style="font-size:12.8px;font-weight:600;">New email from Priya Sharma</div><div style="font-size:11.4px;color:var(--text-muted);">2 minutes ago</div></div>
+        </div>
+        <div class="notif-item">
+          <div class="notif-dot"></div>
+          <div><div style="font-size:12.8px;font-weight:600;">WhatsApp message delivered to Rohan Mehta</div><div style="font-size:11.4px;color:var(--text-muted);">18 minutes ago</div></div>
+        </div>
+        <div class="notif-item">
+          <div class="notif-dot" style="background:var(--color-success);"></div>
+          <div><div style="font-size:12.8px;font-weight:600;">Contact "Neha Kulkarni" imported</div><div style="font-size:11.4px;color:var(--text-muted);">1 hour ago</div></div>
+        </div>
+        <div class="notif-item">
+          <div class="notif-dot" style="background:var(--color-warning);"></div>
+          <div><div style="font-size:12.8px;font-weight:600;">Gmail sync token expiring soon</div><div style="font-size:11.4px;color:var(--text-muted);">3 hours ago</div></div>
+        </div>
+        <hr class="my-2">
+        <div class="text-center"><a href="#" class="small fw-600" style="color:var(--color-primary);">View all notifications</a></div>
+      </div>
+    </div>
+
+    <div class="dropdown">
+      <div class="profile-chip" data-bs-toggle="dropdown">
+        <img src="https://ui-avatars.com/api/?name=Seva+Verma&background=4F46E5&color=fff&bold=true" alt="profile">
+        <div class="p-text">
+          <div class="p-name">Seva Verma</div>
+          <div class="p-role">Administrator</div>
+        </div>
+        <i class="bi bi-chevron-down small"></i>
+      </div>
+      <div class="dropdown-menu dropdown-menu-end" style="width:220px;">
+        <div class="dropdown-item" data-nav="settings"><i class="bi bi-person-circle"></i> My Profile</div>
+        <div class="dropdown-item" data-nav="settings"><i class="bi bi-gear"></i> Settings</div>
+        <div class="dropdown-item"><i class="bi bi-question-circle"></i> Help &amp; Support</div>
+        <hr class="my-2">
+        <div class="dropdown-item text-danger" id="logoutLink2"><i class="bi bi-box-arrow-right"></i> Logout</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============================================================
+     MAIN CONTENT
+     ============================================================ -->
+<main class="app-main">
+  <div class="container-fluid main-inner">
+
+    <!-- ======================= DASHBOARD ======================= -->
+    <section id="page-dashboard" class="page-section active" data-page-section="dashboard">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-subtitle">Welcome back, Seva 👋 — here's what's happening today.</div>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-c btn-sm"><i class="bi bi-download me-1"></i>Export Report</button>
+          <button class="btn btn-primary-c btn-sm" id="dashRefreshBtn"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+        </div>
+      </div>
+
+      <!-- Stat cards -->
+      <div class="row g-3" id="statCardsRow"></div>
+
+      <!-- Quick actions -->
+      <div class="section-title-row mt-4">
+        <h5>Quick Actions</h5>
+      </div>
+      <div class="row g-3" id="quickActionsRow"></div>
+
+      <!-- Charts + timeline -->
+      <div class="row g-3 mt-1">
+        <div class="col-lg-7">
+          <div class="card-c h-100">
+            <div class="card-c-body">
+              <div class="section-title-row"><h5>Weekly Communication Volume</h5><span class="chip chip-neutral">Last 7 days</span></div>
+              <div class="bar-chart" id="weeklyBarChart"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <div class="card-c h-100">
+            <div class="card-c-body">
+              <div class="section-title-row"><h5>Conversations by Status</h5></div>
+              <div class="donut-wrap">
+                <div class="donut"><div class="donut-center"><b>248</b><span>Total</span></div></div>
+                <div>
+                  <div class="legend-item"><span class="legend-dot" style="background:var(--color-primary);"></span>Replied <b class="ms-1">42%</b></div>
+                  <div class="legend-item"><span class="legend-dot" style="background:var(--color-success);"></span>Open <b class="ms-1">26%</b></div>
+                  <div class="legend-item"><span class="legend-dot" style="background:var(--color-warning);"></span>Pending <b class="ms-1">18%</b></div>
+                  <div class="legend-item"><span class="legend-dot" style="background:var(--color-danger);"></span>Overdue <b class="ms-1">14%</b></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-1">
+        <div class="col-lg-7">
+          <div class="card-c">
+            <div class="card-c-body">
+              <div class="section-title-row"><h5>Recent Activity</h5><a href="#" class="small fw-600" style="color:var(--color-primary);">View all</a></div>
+              <div id="activityTimeline"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <div class="card-c">
+            <div class="card-c-body">
+              <div class="section-title-row"><h5>Products Snapshot</h5></div>
+              <div id="productsSnapshot"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= GMAIL INBOX ======================= -->
+    <section id="page-gmail" class="page-section" data-page-section="gmail">
+      <div class="breadcrumb-c"><a data-nav="dashboard">Home</a><i class="bi bi-chevron-right"></i><span class="current">Gmail Inbox</span></div>
+      <div class="page-header">
+        <div>
+          <div class="page-title">Gmail Inbox</div>
+          <div class="page-subtitle">Manage all customer email conversations in one place.</div>
+        </div>
+        <button class="btn btn-primary-c btn-sm"><i class="bi bi-pencil-square me-1"></i>Compose</button>
+      </div>
+
+      <div class="gmail-shell" id="gmailShell">
+        <!-- Folders -->
+        <div class="gmail-folders">
+          <button class="btn btn-primary-c compose-btn-c"><i class="bi bi-plus-lg me-1"></i>Compose</button>
+          <div class="gmail-folder-item active" data-folder="inbox"><i class="bi bi-inbox-fill"></i>Inbox<span class="cnt">5</span></div>
+          <div class="gmail-folder-item" data-folder="starred"><i class="bi bi-star-fill"></i>Starred<span class="cnt">2</span></div>
+          <div class="gmail-folder-item" data-folder="sent"><i class="bi bi-send-fill"></i>Sent<span class="cnt">8</span></div>
+          <div class="gmail-folder-item" data-folder="draft"><i class="bi bi-file-earmark-text"></i>Draft<span class="cnt">1</span></div>
+          <div class="gmail-folder-item" data-folder="archive"><i class="bi bi-archive-fill"></i>Archive<span class="cnt">6</span></div>
+          <div class="gmail-folder-item" data-folder="trash"><i class="bi bi-trash-fill"></i>Trash<span class="cnt">3</span></div>
+        </div>
+
+        <!-- Conversation list -->
+        <div class="gmail-list-pane">
+          <div class="gmail-list-toolbar">
+            <div class="toolbar-search mb-2" style="max-width:none;">
+              <i class="bi bi-search"></i>
+              <input type="text" class="form-control form-control-sm" id="gmailSearchInput" placeholder="Search mail...">
+            </div>
+            <div class="filter-chip-group" id="gmailFilterChips">
+              <button class="filter-chip-btn active" data-filter="all">All</button>
+              <button class="filter-chip-btn" data-filter="unread">Unread</button>
+              <button class="filter-chip-btn" data-filter="read">Read</button>
+              <button class="filter-chip-btn" data-filter="starred">Starred</button>
+              <button class="filter-chip-btn" data-filter="archived">Archived</button>
+            </div>
+          </div>
+          <div class="gmail-list-scroll" id="conversationList"></div>
+          <div class="pagination-c px-2 pb-2">
+            <span class="p-info">Page 1 of 1</span>
+            <div class="p-btns">
+              <div class="p-btn"><i class="bi bi-chevron-left"></i></div>
+              <div class="p-btn active">1</div>
+              <div class="p-btn"><i class="bi bi-chevron-right"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="gmail-preview-pane" id="gmailPreviewPane">
+          <div class="gmail-preview-empty">
+            <i class="bi bi-envelope-open" style="font-size:44px;"></i>
+            <div class="fw-600">Select a conversation to preview</div>
+            <div class="small">Choose an email from the list to read the full thread.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= CONTACTS ======================= -->
+    <section id="page-contacts" class="page-section" data-page-section="contacts">
+      <div class="breadcrumb-c"><a data-nav="dashboard">Home</a><i class="bi bi-chevron-right"></i><span class="current">Contacts</span></div>
+      <div class="page-header">
+        <div>
+          <div class="page-title">Contacts</div>
+          <div class="page-subtitle">All your customer &amp; lead contacts in one directory.</div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn btn-outline-c btn-sm" id="importContactsBtn"><i class="bi bi-file-earmark-arrow-up me-1"></i>Import Excel</button>
+          <button class="btn btn-outline-c btn-sm" id="exportContactsBtn"><i class="bi bi-file-earmark-arrow-down me-1"></i>Export Excel</button>
+          <button class="btn btn-primary-c btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddContact"><i class="bi bi-person-plus-fill me-1"></i>Add Contact</button>
+        </div>
+      </div>
+
+      <div class="card-c">
+        <div class="card-c-body">
+          <div class="toolbar-c">
+            <div class="toolbar-search">
+              <i class="bi bi-search"></i>
+              <input type="text" class="form-control form-control-sm" id="contactsSearchInput" placeholder="Search contacts...">
+            </div>
+            <div class="filter-chip-group" id="contactsFilterChips">
+              <button class="filter-chip-btn active" data-filter="all">All</button>
+              <button class="filter-chip-btn" data-filter="Active">Active</button>
+              <button class="filter-chip-btn" data-filter="Lead">Lead</button>
+              <button class="filter-chip-btn" data-filter="Inactive">Inactive</button>
+            </div>
+            <div class="ms-auto small text-muted-c" id="contactsCountLabel"></div>
+          </div>
+
+          <div class="table-responsive-c">
+            <table class="table-c">
+              <thead>
+                <tr>
+                  <th></th><th>Name</th><th>Company</th><th>Email</th><th>WhatsApp</th><th>Designation</th><th>Status</th><th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="contactsTableBody"></tbody>
+            </table>
+          </div>
+          <div id="contactsEmptyState"></div>
+
+          <div class="pagination-c">
+            <span class="p-info" id="contactsPaginationInfo"></span>
+            <div class="p-btns">
+              <div class="p-btn"><i class="bi bi-chevron-left"></i></div>
+              <div class="p-btn active">1</div>
+              <div class="p-btn"><i class="bi bi-chevron-right"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= CONTACT PROFILE ======================= -->
+    <section id="page-contact-profile" class="page-section" data-page-section="contact-profile">
+      <div class="breadcrumb-c"><a data-nav="dashboard">Home</a><i class="bi bi-chevron-right"></i><a data-nav="contacts">Contacts</a><i class="bi bi-chevron-right"></i><span class="current">Contact Profile</span></div>
+      <div class="page-header">
+        <div>
+          <div class="page-title" id="cpPageTitle">Contact Profile</div>
+          <div class="page-subtitle">Complete 360° view of the customer relationship.</div>
+        </div>
+        <button class="btn btn-outline-c btn-sm" data-nav="contacts"><i class="bi bi-arrow-left me-1"></i>Back to Contacts</button>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-lg-4">
+          <div class="card-c">
+            <div class="card-c-body text-center">
+              <div id="cpAvatar" class="avatar-circle avatar-lg mx-auto mb-3"></div>
+              <h5 class="mb-0" id="cpName">—</h5>
+              <div class="text-muted-c small mb-2" id="cpDesignation">—</div>
+              <span class="chip chip-success" id="cpStatusChip">Active</span>
+
+              <div class="d-flex justify-content-center gap-2 mt-4">
+                <button class="btn-icon-sq" title="Email" data-bs-toggle="tooltip"><i class="bi bi-envelope-fill"></i></button>
+                <button class="btn-icon-sq success" title="WhatsApp" data-bs-toggle="tooltip" id="cpWaBtn"><i class="bi bi-whatsapp"></i></button>
+                <button class="btn-icon-sq" title="Call" data-bs-toggle="tooltip"><i class="bi bi-telephone-fill"></i></button>
+                <button class="btn-icon-sq" title="Edit" data-bs-toggle="tooltip" id="cpEditBtn"><i class="bi bi-pencil-fill"></i></button>
+              </div>
+
+              <hr class="my-4">
+              <div class="text-start small">
+                <div class="d-flex justify-content-between py-2 border-bottom" style="border-color:var(--border-color)!important;">
+                  <span class="text-muted-c">Company</span><span class="fw-600" id="cpCompanySide">—</span>
+                </div>
+                <div class="d-flex justify-content-between py-2 border-bottom" style="border-color:var(--border-color)!important;">
+                  <span class="text-muted-c">Email</span><span class="fw-600" id="cpEmailSide">—</span>
+                </div>
+                <div class="d-flex justify-content-between py-2">
+                  <span class="text-muted-c">WhatsApp</span><span class="fw-600" id="cpWaSide">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          <div class="card-c">
+            <div class="card-c-body">
+              <ul class="nav nav-tabs-c mb-3" id="cpTabs">
+                <li class="nav-item"><button class="nav-link active" data-tab="information">Information</button></li>
+                <li class="nav-item"><button class="nav-link" data-tab="gmail">Gmail Conversations</button></li>
+                <li class="nav-item"><button class="nav-link" data-tab="whatsapp">WhatsApp</button></li>
+                <li class="nav-item"><button class="nav-link" data-tab="notes">Notes</button></li>
+              </ul>
+
+              <div class="cp-tab-pane" id="cpTabInformation"></div>
+              <div class="cp-tab-pane d-none" id="cpTabGmail"></div>
+              <div class="cp-tab-pane d-none" id="cpTabWhatsapp"></div>
+              <div class="cp-tab-pane d-none" id="cpTabNotes"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= WHATSAPP TEMPLATES ======================= -->
+    <section id="page-whatsapp" class="page-section" data-page-section="whatsapp">
+      <div class="breadcrumb-c"><a data-nav="dashboard">Home</a><i class="bi bi-chevron-right"></i><span class="current">WhatsApp Templates</span></div>
+      <div class="page-header">
+        <div>
+          <div class="page-title">WhatsApp Templates</div>
+          <div class="page-subtitle">Create reusable message templates with dynamic placeholders.</div>
+        </div>
+        <button class="btn btn-primary-c btn-sm" id="createTemplateBtn"><i class="bi bi-plus-lg me-1"></i>Create Template</button>
+      </div>
+
+      <div class="toolbar-c">
+        <div class="toolbar-search">
+          <i class="bi bi-search"></i>
+          <input type="text" class="form-control form-control-sm" id="templatesSearchInput" placeholder="Search templates...">
+        </div>
+      </div>
+
+      <div class="row g-3" id="templatesGrid"></div>
+    </section>
+
+    <!-- ======================= PRODUCT MASTER ======================= -->
+    <section id="page-products" class="page-section" data-page-section="products">
+      <div class="breadcrumb-c"><a data-nav="dashboard">Home</a><i class="bi bi-chevron-right"></i><span class="current">Product Master</span></div>
+      <div class="page-header">
+        <div>
+          <div class="page-title">Product Master</div>
+          <div class="page-subtitle">Manage your product catalog and specifications.</div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn btn-outline-c btn-sm" id="importProductsBtn"><i class="bi bi-file-earmark-arrow-up me-1"></i>Import Excel</button>
+          <button class="btn btn-outline-c btn-sm" id="exportProductsBtn"><i class="bi bi-file-earmark-arrow-down me-1"></i>Export Excel</button>
+          <button class="btn btn-primary-c btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddProduct"><i class="bi bi-plus-lg me-1"></i>Add Product</button>
+        </div>
+      </div>
+
+      <div class="card-c">
+        <div class="card-c-body">
+          <div class="toolbar-c">
+            <div class="toolbar-search">
+              <i class="bi bi-search"></i>
+              <input type="text" class="form-control form-control-sm" id="productsSearchInput" placeholder="Search products...">
+            </div>
+            <div class="filter-chip-group" id="productsFilterChips">
+              <button class="filter-chip-btn active" data-filter="all">All Units</button>
+              <button class="filter-chip-btn" data-filter="PCS">PCS</button>
+              <button class="filter-chip-btn" data-filter="KG">KG</button>
+              <button class="filter-chip-btn" data-filter="BOX">BOX</button>
+            </div>
+            <div class="ms-auto small text-muted-c" id="productsCountLabel"></div>
+          </div>
+
+          <div class="table-responsive-c">
+            <table class="table-c">
+              <thead>
+                <tr>
+                  <th>Code</th><th>Product Name</th><th>Size</th><th>Weight</th><th>Unit</th><th>Rate</th><th>Specification</th><th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="productsTableBody"></tbody>
+            </table>
+          </div>
+          <div id="productsEmptyState"></div>
+
+          <div class="pagination-c">
+            <span class="p-info" id="productsPaginationInfo"></span>
+            <div class="p-btns">
+              <div class="p-btn"><i class="bi bi-chevron-left"></i></div>
+              <div class="p-btn active">1</div>
+              <div class="p-btn"><i class="bi bi-chevron-right"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= SETTINGS ======================= -->
+    <section id="page-settings" class="page-section" data-page-section="settings">
+      <div class="breadcrumb-c"><a data-nav="dashboard">Home</a><i class="bi bi-chevron-right"></i><span class="current">Settings</span></div>
+      <div class="page-header">
+        <div>
+          <div class="page-title">Settings</div>
+          <div class="page-subtitle">Manage your account, integrations and preferences.</div>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <!-- User profile -->
+        <div class="col-lg-6">
+          <div class="card-c h-100">
+            <div class="card-c-body">
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <div class="settings-card-icon" style="background:var(--color-primary-light);color:var(--color-primary);"><i class="bi bi-person-fill"></i></div>
+                <h5 class="mb-0">User Profile</h5>
+              </div>
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <img src="https://ui-avatars.com/api/?name=Seva+Verma&background=4F46E5&color=fff&bold=true" class="avatar-circle avatar-md">
+                <div>
+                  <button class="btn btn-outline-c btn-sm"><i class="bi bi-upload me-1"></i>Change Photo</button>
+                </div>
+              </div>
+              <form>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" class="form-control" value="Seva Verma">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" class="form-control" value="seva.animals@gmail.com">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Phone</label>
+                    <input type="text" class="form-control" value="+91 98765 43210">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Role</label>
+                    <input type="text" class="form-control" value="Administrator" disabled>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-primary-c btn-sm mt-3" onclick="showToast('Profile updated successfully','success')">Save Changes</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Change password -->
+        <div class="col-lg-6">
+          <div class="card-c h-100">
+            <div class="card-c-body">
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <div class="settings-card-icon" style="background:var(--color-danger-light);color:var(--color-danger);"><i class="bi bi-shield-lock-fill"></i></div>
+                <h5 class="mb-0">Change Password</h5>
+              </div>
+              <form>
+                <div class="mb-3">
+                  <label class="form-label">Current Password</label>
+                  <input type="password" class="form-control" placeholder="••••••••">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">New Password</label>
+                  <input type="password" class="form-control" placeholder="••••••••">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Confirm New Password</label>
+                  <input type="password" class="form-control" placeholder="••••••••">
+                </div>
+                <button type="button" class="btn btn-primary-c btn-sm" onclick="showToast('Password updated successfully','success')">Update Password</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Theme -->
+        <div class="col-lg-6">
+          <div class="card-c h-100">
+            <div class="card-c-body">
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <div class="settings-card-icon" style="background:var(--color-info-light);color:var(--color-info);"><i class="bi bi-palette-fill"></i></div>
+                <h5 class="mb-0">Theme</h5>
+              </div>
+              <p class="small text-muted-c">Choose how the interface looks across the app.</p>
+              <div class="d-flex gap-2">
+                <button class="btn btn-outline-c btn-sm theme-opt-btn" data-theme-opt="light"><i class="bi bi-sun-fill me-1"></i>Light</button>
+                <button class="btn btn-outline-c btn-sm theme-opt-btn" data-theme-opt="dark"><i class="bi bi-moon-stars-fill me-1"></i>Dark</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gmail integration -->
+        <div class="col-lg-6">
+          <div class="card-c h-100">
+            <div class="card-c-body">
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <div class="settings-card-icon" style="background:var(--color-warning-light);color:var(--color-warning);"><i class="bi bi-envelope-at-fill"></i></div>
+                <h5 class="mb-0">Gmail Integration</h5>
+              </div>
+              <div class="d-flex align-items-center justify-content-between p-3 mb-3" style="background:var(--bg-surface-2);border-radius:var(--radius-md);">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-google" style="font-size:20px;color:var(--color-danger);"></i>
+                  <div>
+                    <div class="fw-600 small" id="gmailAccountLabel">seva.animals@gmail.com</div>
+                    <div class="chip chip-success" id="gmailStatusChip"><i class="bi bi-circle-fill"></i>Connected</div>
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-outline-c btn-sm" id="gmailConnectBtn"><i class="bi bi-plug-fill me-1"></i>Connect Gmail</button>
+              <button class="btn btn-danger-c btn-sm" id="gmailDisconnectBtn"><i class="bi bi-x-circle me-1"></i>Disconnect Gmail</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- WhatsApp settings -->
+        <div class="col-lg-6">
+          <div class="card-c h-100">
+            <div class="card-c-body">
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <div class="settings-card-icon" style="background:var(--color-whatsapp-light);color:var(--color-whatsapp);"><i class="bi bi-whatsapp"></i></div>
+                <h5 class="mb-0">WhatsApp Settings</h5>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Sender Number</label>
+                <input type="text" class="form-control" value="+91 90000 12345">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Default Template</label>
+                <select class="form-select" id="defaultTemplateSelect"></select>
+              </div>
+              <button type="button" class="btn btn-primary-c btn-sm" onclick="showToast('WhatsApp settings saved','success')">Save Settings</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- System preferences -->
+        <div class="col-lg-6">
+          <div class="card-c h-100">
+            <div class="card-c-body">
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <div class="settings-card-icon" style="background:var(--color-success-light);color:var(--color-success);"><i class="bi bi-sliders"></i></div>
+                <h5 class="mb-0">System Preferences</h5>
+              </div>
+              <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" checked id="prefEmailNotif">
+                <label class="form-check-label small" for="prefEmailNotif">Email notifications</label>
+              </div>
+              <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" checked id="prefWaNotif">
+                <label class="form-check-label small" for="prefWaNotif">WhatsApp delivery alerts</label>
+              </div>
+              <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="prefAutoArchive">
+                <label class="form-check-label small" for="prefAutoArchive">Auto-archive replied emails</label>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Language</label>
+                  <select class="form-select">
+                    <option>English</option><option>Hindi</option><option>Marathi</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Timezone</label>
+                  <select class="form-select">
+                    <option>Asia/Kolkata (IST)</option><option>UTC</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<!-- ============================================================
+     MODAL: Add / Edit Contact
+     ============================================================ -->
+<div class="modal fade" id="modalAddContact" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="contactModalTitle">Add Contact</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formContact">
+          <input type="hidden" id="contactIdField">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Full Name *</label>
+              <input type="text" class="form-control" id="fContactName" placeholder="e.g. Priya Sharma" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Company</label>
+              <input type="text" class="form-control" id="fContactCompany" placeholder="e.g. Nimbus Retail Pvt Ltd">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Email *</label>
+              <input type="email" class="form-control" id="fContactEmail" placeholder="e.g. name@company.com" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">WhatsApp Number</label>
+              <input type="text" class="form-control" id="fContactWhatsapp" placeholder="e.g. +91 98765 43210">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Designation</label>
+              <input type="text" class="form-control" id="fContactDesignation" placeholder="e.g. Procurement Manager">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Status</label>
+              <select class="form-select" id="fContactStatus">
+                <option>Active</option><option>Lead</option><option>Inactive</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Notes</label>
+              <textarea class="form-control" id="fContactNotes" rows="3" placeholder="Additional notes about this contact..."></textarea>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light-c" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary-c" id="saveContactBtn"><i class="bi bi-check2 me-1"></i>Save Contact</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: Generic Confirm (Delete)
+     ============================================================ -->
+<div class="modal fade" id="modalConfirm" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+    <div class="modal-content">
+      <div class="modal-body text-center py-4">
+        <div class="mx-auto mb-3 d-flex align-items-center justify-content-center" style="width:56px;height:56px;border-radius:50%;background:var(--color-danger-light);color:var(--color-danger);font-size:24px;">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+        </div>
+        <h5 id="confirmModalTitle">Delete this item?</h5>
+        <p class="text-muted-c small" id="confirmModalBody">This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer justify-content-center border-top-0 pt-0">
+        <button class="btn btn-light-c" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger-c" id="confirmModalActionBtn">Yes, Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: Create Contact (from Gmail sender)
+     ============================================================ -->
+<div class="modal fade" id="modalCreateContactFromMail" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Create Contact from Email</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted-c">No existing contact matches this sender. Review details and create a new contact.</p>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Name</label>
+            <input type="text" class="form-control" id="gmailCreateName">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" id="gmailCreateEmail">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Company</label>
+            <input type="text" class="form-control" placeholder="e.g. Acme Corp">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">WhatsApp Number</label>
+            <input type="text" class="form-control" placeholder="e.g. +91 98765 43210">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light-c" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary-c" id="gmailCreateContactSaveBtn"><i class="bi bi-check2 me-1"></i>Create Contact</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: Import Excel (generic - contacts / products)
+     ============================================================ -->
+<div class="modal fade" id="modalImportExcel" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="importModalTitle">Import from Excel</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center py-4">
+        <div class="mx-auto mb-3 d-flex align-items-center justify-content-center" style="width:64px;height:64px;border-radius:50%;background:var(--color-primary-light);color:var(--color-primary);font-size:28px;">
+          <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+        </div>
+        <p class="fw-600 mb-1">Drag &amp; drop your .xlsx file here</p>
+        <p class="small text-muted-c">or click below to browse files from your computer</p>
+        <input type="file" class="form-control mt-2" accept=".xlsx,.xls,.csv">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light-c" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary-c" id="importExcelActionBtn"><i class="bi bi-upload me-1"></i>Import</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: Add / Edit Product
+     ============================================================ -->
+<div class="modal fade" id="modalAddProduct" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="productModalTitle">Add Product</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formProduct">
+          <input type="hidden" id="productIdField">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Product Code *</label>
+              <input type="text" class="form-control" id="fProductCode" placeholder="e.g. PRD-1001">
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">Product Name *</label>
+              <input type="text" class="form-control" id="fProductName" placeholder="e.g. Stainless Steel Hinge">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Size</label>
+              <input type="text" class="form-control" id="fProductSize" placeholder="e.g. 4 inch">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Weight</label>
+              <input type="text" class="form-control" id="fProductWeight" placeholder="e.g. 250g">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Unit</label>
+              <select class="form-select" id="fProductUnit">
+                <option>PCS</option><option>KG</option><option>BOX</option><option>SET</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Rate (₹)</label>
+              <input type="number" class="form-control" id="fProductRate" placeholder="e.g. 145.00">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Specification</label>
+              <input type="text" class="form-control" id="fProductSpec" placeholder="e.g. SS304, Matte Finish">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light-c" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary-c" id="saveProductBtn"><i class="bi bi-check2 me-1"></i>Save Product</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: Create / Edit WhatsApp Template
+     ============================================================ -->
+<div class="modal fade" id="modalTemplateEditor" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="templateModalTitle">Create Template</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="templateIdField">
+        <div class="row g-4">
+          <div class="col-lg-7">
+            <label class="form-label">Template Name *</label>
+            <input type="text" class="form-control mb-3" id="fTemplateName" placeholder="e.g. Order Confirmation">
+
+            <label class="form-label">Available Placeholders</label>
+            <div class="d-flex gap-2 flex-wrap mb-2">
+              <button type="button" class="placeholder-btn" data-ph="{name}">{name}</button>
+              <button type="button" class="placeholder-btn" data-ph="{company}">{company}</button>
+              <button type="button" class="placeholder-btn" data-ph="{employee}">{employee}</button>
+              <button type="button" class="placeholder-btn" data-ph="{date}">{date}</button>
+            </div>
+
+            <label class="form-label">Message *</label>
+            <textarea class="form-control" id="fTemplateMessage" rows="8" placeholder="Hi {name}, thank you for reaching out to {company}..."></textarea>
+            <div class="form-text">Click a placeholder above to insert it at the cursor position.</div>
+          </div>
+          <div class="col-lg-5">
+            <label class="form-label">Live Preview</label>
+            <div class="wa-phone-frame">
+              <div class="wa-phone-screen">
+                <div class="wa-bubble" id="templateLivePreview">Your message preview will appear here...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light-c" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary-c" id="saveTemplateBtn"><i class="bi bi-check2 me-1"></i>Save Template</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: WhatsApp Phone Selector (step 1 of "Use Template")
+     ============================================================ -->
+<div class="modal fade" id="modalPhoneSelector" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Select Recipient</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label">Search Contact</label>
+        <input type="text" class="form-control mb-3" id="phoneSelectorSearch" placeholder="Search by name or number...">
+        <div style="max-height:260px;overflow-y:auto;" id="phoneSelectorList"></div>
+        <hr>
+        <label class="form-label">Or enter number manually</label>
+        <input type="text" class="form-control" id="phoneSelectorManual" placeholder="+91 98765 43210">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light-c" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary-c" id="phoneSelectorContinueBtn">Continue <i class="bi bi-arrow-right ms-1"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: WhatsApp Message Editor (step 2 of "Use Template")
+     ============================================================ -->
+<div class="modal fade" id="modalWaMessageEditor" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Send WhatsApp Message</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex align-items-center gap-2 mb-3 p-2" style="background:var(--bg-surface-2);border-radius:var(--radius-sm);">
+          <i class="bi bi-person-circle" style="font-size:22px;color:var(--text-muted);"></i>
+          <div class="small"><span class="text-muted-c">To:</span> <b id="waEditorRecipient">—</b></div>
+        </div>
+        <div class="row g-4">
+          <div class="col-md-7">
+            <label class="form-label">Message</label>
+            <textarea class="form-control" id="waEditorMessage" rows="8"></textarea>
+          </div>
+          <div class="col-md-5">
+            <label class="form-label">Preview</label>
+            <div class="wa-phone-frame" style="width:220px;">
+              <div class="wa-phone-screen" style="min-height:260px;">
+                <div class="wa-bubble" id="waEditorPreview">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light-c" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-whatsapp-c" id="openWhatsappBtn"><i class="bi bi-whatsapp me-1"></i>Open WhatsApp</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     TOAST CONTAINER
+     ============================================================ -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:2050;" id="toastContainer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* ============================================================================
+   Communication Management System — Frontend Logic (dummy data / no backend)
+   All IDs / classes / data-attributes are named for easy Laravel Blade reuse.
+   ============================================================================ */
+(function(){
+  'use strict';
+
+  /* --------------------------------------------------------------------
+     DUMMY DATA STORE
+     -------------------------------------------------------------------- */
+  const avatarPalette = ['#4F46E5','#0891B2','#16A34A','#D97706','#DB2777','#7C3AED','#0D9488','#DC2626'];
+  function colorFor(seed){ let h=0; for(let i=0;i<seed.length;i++) h=seed.charCodeAt(i)+((h<<5)-h); return avatarPalette[Math.abs(h)%avatarPalette.length]; }
+  function initials(name){ return name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+
+  const DB = {
+    contacts: [
+      {id:1,name:'Priya Sharma',company:'Nimbus Retail Pvt Ltd',email:'priya.sharma@nimbusretail.com',whatsapp:'+91 98765 43210',designation:'Procurement Manager',status:'Active',notes:'Prefers WhatsApp over email. Follow up every Monday.'},
+      {id:2,name:'Rohan Mehta',company:'Bluepeak Industries',email:'rohan.mehta@bluepeak.io',whatsapp:'+91 91234 56780',designation:'Operations Head',status:'Active',notes:'Key decision maker for bulk orders.'},
+      {id:3,name:'Neha Kulkarni',company:'Kulkarni & Sons Traders',email:'neha.k@kulkarnisons.in',whatsapp:'+91 90909 12345',designation:'Owner',status:'Lead',notes:'Interested in quarterly contract, needs quote.'},
+      {id:4,name:'Arjun Verma',company:'Vertex Logistics',email:'arjun.verma@vertexlog.com',whatsapp:'+91 99887 76655',designation:'Supply Chain Lead',status:'Active',notes:''},
+      {id:5,name:'Sanya Kapoor',company:'Aurora Home Décor',email:'sanya@aurorahome.co',whatsapp:'+91 98123 45670',designation:'Founder',status:'Lead',notes:'Referred by Priya Sharma.'},
+      {id:6,name:'Vikram Singh',company:'Singh Hardware Mart',email:'vikram.singh@singhhw.com',whatsapp:'+91 97654 32109',designation:'Purchase Executive',status:'Inactive',notes:'No response since March.'},
+      {id:7,name:'Ananya Iyer',company:'Iyer Textiles',email:'ananya.iyer@iyertextiles.com',whatsapp:'+91 96543 21098',designation:'Merchandiser',status:'Active',notes:''},
+      {id:8,name:'Karan Malhotra',company:'Malhotra Steel Works',email:'karan@malhotrasteel.in',whatsapp:'+91 95432 10987',designation:'Director',status:'Active',notes:'VIP client — priority support.'},
+      {id:9,name:'Divya Nair',company:'Nair Exports',email:'divya.nair@nairexports.com',whatsapp:'+91 94321 09876',designation:'Export Manager',status:'Lead',notes:''},
+      {id:10,name:'Aditya Rao',company:'Rao Constructions',email:'aditya.rao@raoconstruct.com',whatsapp:'+91 93210 98765',designation:'Site Manager',status:'Inactive',notes:'Project on hold.'}
+    ],
+    emailFolders: ['inbox','starred','sent','draft','archive','trash'],
+    conversations: [
+      {id:1,contactId:1,sender:'Priya Sharma',email:'priya.sharma@nimbusretail.com',subject:'Re: Q3 Bulk Order Quotation',preview:'Thanks for the quick turnaround, could we discuss the payment terms for...',time:'10:24 AM',unread:true,starred:true,folder:'inbox',
+        messages:[
+          {from:'Priya Sharma',to:'me',date:'Today, 10:24 AM',body:'Hi team,<br><br>Thanks for the quick turnaround on the quotation. Could we discuss the payment terms for the Q3 bulk order? We were hoping for a 30-day credit period given our long-standing relationship.<br><br>Looking forward to your response.<br><br>Best,<br>Priya'},
+          {from:'me',to:'Priya Sharma',date:'Yesterday, 4:12 PM',body:'Hello Priya,<br><br>Please find attached the quotation for the Q3 bulk order as discussed. Let us know if you need any adjustments.<br><br>Regards,<br>Seva'}
+        ]},
+      {id:2,contactId:2,sender:'Rohan Mehta',email:'rohan.mehta@bluepeak.io',subject:'Shipment delay for order #BP-2291',preview:'We noticed the shipment for order BP-2291 hasn’t moved in 3 days...',time:'9:47 AM',unread:true,starred:false,folder:'inbox',
+        messages:[{from:'Rohan Mehta',to:'me',date:'Today, 9:47 AM',body:'Hi,<br><br>We noticed the shipment for order #BP-2291 hasn\'t moved in 3 days according to the tracking portal. Could you please check with logistics and update us?<br><br>Thanks,<br>Rohan'}]},
+      {id:3,contactId:null,sender:'Sameer Joshi',email:'sameer.joshi@newventure.co',subject:'Inquiry about product catalog',preview:'Hello, I came across your company and would love to know more about...',time:'9:02 AM',unread:true,starred:false,folder:'inbox',
+        messages:[{from:'Sameer Joshi',to:'me',date:'Today, 9:02 AM',body:'Hello,<br><br>I came across your company and would love to know more about your product catalog, especially the hardware fittings range. Could you share a price list?<br><br>Regards,<br>Sameer'}]},
+      {id:4,contactId:5,sender:'Sanya Kapoor',email:'sanya@aurorahome.co',subject:'Sample request — decorative hinges',preview:'Could you send a few samples of the decorative hinge range before we...',time:'Yesterday',unread:false,starred:true,folder:'inbox',
+        messages:[{from:'Sanya Kapoor',to:'me',date:'Yesterday, 2:30 PM',body:'Hi,<br><br>Could you send a few samples of the decorative hinge range before we finalize the order? Also let us know the MOQ.<br><br>Thanks,<br>Sanya'}]},
+      {id:5,contactId:8,sender:'Karan Malhotra',company:'Malhotra Steel Works',email:'karan@malhotrasteel.in',subject:'Annual contract renewal',preview:'As discussed on call, sending over the renewal terms for your review...',time:'2 days ago',unread:false,starred:false,folder:'inbox',
+        messages:[{from:'Karan Malhotra',to:'me',date:'2 days ago, 11:00 AM',body:'Hi Team,<br><br>As discussed on call, sending over the renewal terms for your review. Please confirm by Friday so we can proceed.<br><br>Regards,<br>Karan'}]},
+      {id:6,contactId:4,sender:'Arjun Verma',email:'arjun.verma@vertexlog.com',subject:'Re: Transport rate revision',preview:'Noted the new rates, will circulate internally and revert by EOD.',time:'3 days ago',unread:false,starred:false,folder:'archive',
+        messages:[{from:'Arjun Verma',to:'me',date:'3 days ago',body:'Noted the new rates, will circulate internally and revert by EOD.'}]},
+      {id:7,contactId:6,sender:'Vikram Singh',email:'vikram.singh@singhhw.com',subject:'Following up — March invoice',preview:'Just checking in regarding the pending invoice from March...',time:'5 days ago',unread:false,starred:false,folder:'archive',
+        messages:[{from:'Vikram Singh',to:'me',date:'5 days ago',body:'Just checking in regarding the pending invoice from March. Please advise on status.'}]},
+      {id:8,contactId:null,sender:'LinkedIn Notifications',email:'notifications@linkedin.com',subject:'You have 3 new profile views',preview:'See who\'s been checking out your profile this week.',time:'1 week ago',unread:false,starred:false,folder:'trash',
+        messages:[{from:'LinkedIn Notifications',to:'me',date:'1 week ago',body:'See who\'s been checking out your profile this week.'}]}
+    ],
+    templates: [
+      {id:1,name:'Order Confirmation',message:'Hi {name}, this is {employee} from {company}. Your order has been confirmed and will be processed by {date}. Thank you for your business!'},
+      {id:2,name:'Payment Reminder',message:'Hello {name}, this is a friendly reminder from {company} that your payment is due on {date}. Please let us know if you have any questions. — {employee}'},
+      {id:3,name:'Sample Dispatch Notice',message:'Hi {name}, your requested samples have been dispatched from {company} today, {date}. Regards, {employee}.'},
+      {id:4,name:'Festive Greetings',message:'Dear {name}, warm festive greetings from all of us at {company}! Wishing you continued success. — {employee}'},
+      {id:5,name:'Follow-up After Meeting',message:'Hi {name}, thank you for your time today. As discussed, {company} will share the proposal by {date}. Best, {employee}'}
+    ],
+    products: [
+      {id:1,code:'PRD-1001',name:'Stainless Steel Hinge',size:'4 inch',weight:'250g',unit:'PCS',rate:145.00,spec:'SS304, Matte Finish'},
+      {id:2,code:'PRD-1002',name:'Brass Door Handle',size:'6 inch',weight:'400g',unit:'PCS',rate:320.00,spec:'Antique Brass, Polished'},
+      {id:3,code:'PRD-1003',name:'Galvanized Iron Bracket',size:'8 inch',weight:'600g',unit:'BOX',rate:980.00,spec:'GI Coated, Pack of 10'},
+      {id:4,code:'PRD-1004',name:'Aluminium Window Track',size:'2m',weight:'1.2kg',unit:'PCS',rate:560.00,spec:'Anodized Aluminium'},
+      {id:5,code:'PRD-1005',name:'Chrome Cabinet Knob',size:'2 inch',weight:'80g',unit:'PCS',rate:65.00,spec:'Chrome Plated Zinc'},
+      {id:6,code:'PRD-1006',name:'PVC Pipe Clamp',size:'1 inch',weight:'35g',unit:'KG',rate:210.00,spec:'UV Resistant PVC'},
+      {id:7,code:'PRD-1007',name:'Decorative Wall Hook Set',size:'Standard',weight:'150g',unit:'SET',rate:275.00,spec:'Set of 4, Matte Black'},
+      {id:8,code:'PRD-1008',name:'Heavy Duty Padlock',size:'50mm',weight:'220g',unit:'PCS',rate:190.00,spec:'Hardened Steel Shackle'}
+    ],
+    activity: [
+      {icon:'bi-envelope-fill',color:'primary',text:'New email received from <b>Priya Sharma</b> regarding Q3 bulk order',time:'10 minutes ago'},
+      {icon:'bi-whatsapp',color:'success',text:'WhatsApp message sent to <b>Rohan Mehta</b> using "Shipment Update" template',time:'42 minutes ago'},
+      {icon:'bi-person-plus-fill',color:'info',text:'New contact <b>Neha Kulkarni</b> added via manual entry',time:'2 hours ago'},
+      {icon:'bi-box-seam-fill',color:'warning',text:'Product <b>"Chrome Cabinet Knob"</b> rate updated',time:'5 hours ago'},
+      {icon:'bi-reply-fill',color:'primary',text:'Replied to <b>Karan Malhotra</b> about annual contract renewal',time:'Yesterday'},
+      {icon:'bi-file-earmark-spreadsheet-fill',color:'info',text:'Contacts imported from <b>contacts_batch_july.xlsx</b> (18 records)',time:'2 days ago'}
+    ]
+  };
+
+  let editingContactId = null;
+  let editingProductId = null;
+  let editingTemplateId = null;
+  let currentContactProfileId = null;
+  let currentGmailFolder = 'inbox';
+  let currentGmailFilter = 'all';
+  let selectedConversationId = null;
+  let pendingDeleteCallback = null;
+  let waFlowContext = {templateId:null, recipient:null};
+
+  /* --------------------------------------------------------------------
+     UTIL: Toast
+     -------------------------------------------------------------------- */
+  window.showToast = function(message, type){
+    type = type || 'primary';
+    const iconMap = {success:'bi-check-circle-fill',danger:'bi-x-circle-fill',warning:'bi-exclamation-triangle-fill',primary:'bi-info-circle-fill'};
+    const colorMap = {success:'var(--color-success)',danger:'var(--color-danger)',warning:'var(--color-warning)',primary:'var(--color-primary)'};
+    const el = document.createElement('div');
+    el.className = 'toast align-items-center border-0';
+    el.setAttribute('role','alert');
+    el.innerHTML = `
+      <div class="d-flex">
+        <div class="toast-body d-flex align-items-center gap-2">
+          <i class="bi ${iconMap[type]}" style="color:${colorMap[type]};font-size:16px;"></i>
+          <span style="color:var(--text-primary);">${message}</span>
+        </div>
+        <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>`;
+    document.getElementById('toastContainer').appendChild(el);
+    const t = new bootstrap.Toast(el,{delay:3200});
+    t.show();
+    el.addEventListener('hidden.bs.toast',()=>el.remove());
+  };
+
+  function openConfirm(title, body, onConfirm){
+    document.getElementById('confirmModalTitle').textContent = title;
+    document.getElementById('confirmModalBody').textContent = body;
+    pendingDeleteCallback = onConfirm;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalConfirm')).show();
+  }
+  document.getElementById('confirmModalActionBtn').addEventListener('click', function(){
+    if (typeof pendingDeleteCallback === 'function') pendingDeleteCallback();
+    bootstrap.Modal.getInstance(document.getElementById('modalConfirm')).hide();
+  });
+
+  function simulateLoading(callback, delay){
+    const loader = document.getElementById('pageLoader');
+    loader.classList.remove('done');
+    loader.classList.add('active');
+    setTimeout(()=>{
+      loader.classList.add('done');
+      setTimeout(()=>{loader.classList.remove('active','done');}, 300);
+      if (callback) callback();
+    }, delay || 450);
+  }
+
+  /* --------------------------------------------------------------------
+     NAVIGATION
+     -------------------------------------------------------------------- */
+  function navigateTo(page){
+    document.querySelectorAll('.page-section').forEach(s=>s.classList.remove('active'));
+    document.querySelectorAll('.sidebar-link[data-nav]').forEach(s=>s.classList.remove('active'));
+    const target = document.getElementById('page-'+page);
+    if (!target) return;
+    simulateLoading(()=>{
+      target.classList.add('active');
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.querySelectorAll(`.sidebar-link[data-nav="${page}"]`).forEach(s=>s.classList.add('active'));
+    closeSidebarMobile();
+  }
+  document.querySelectorAll('[data-nav]').forEach(el=>{
+    el.addEventListener('click', ()=> navigateTo(el.getAttribute('data-nav')));
+  });
+
+  /* --------------------------------------------------------------------
+     SIDEBAR (mobile)
+     -------------------------------------------------------------------- */
+  const sidebar = document.getElementById('appSidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  function openSidebarMobile(){ sidebar.classList.add('show'); overlay.classList.add('show'); }
+  function closeSidebarMobile(){ sidebar.classList.remove('show'); overlay.classList.remove('show'); }
+  document.getElementById('burgerBtn').addEventListener('click', openSidebarMobile);
+  overlay.addEventListener('click', closeSidebarMobile);
+
+  /* --------------------------------------------------------------------
+     THEME TOGGLE
+     -------------------------------------------------------------------- */
+  function applyTheme(theme){
+    document.documentElement.setAttribute('data-theme', theme);
+    document.getElementById('themeIcon').className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+    localStorage.setItem('cms-theme', theme);
+  }
+  document.getElementById('themeToggleBtn').addEventListener('click', ()=>{
+    const current = document.documentElement.getAttribute('data-theme');
+    applyTheme(current === 'dark' ? 'light' : 'dark');
+  });
+  document.querySelectorAll('.theme-opt-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> applyTheme(btn.getAttribute('data-theme-opt')));
+  });
+  applyTheme(localStorage.getItem('cms-theme') || 'light');
+
+  /* --------------------------------------------------------------------
+     LOGOUT (dummy)
+     -------------------------------------------------------------------- */
+  function handleLogout(){
+    openConfirm('Log out of CommsHub?','You will need to sign in again to access your dashboard.', ()=>{
+      simulateLoading(()=>{ showToast('You have been logged out (demo only)','primary'); }, 600);
+    });
+  }
+  document.getElementById('logoutLink').addEventListener('click', handleLogout);
+  document.getElementById('logoutLink2').addEventListener('click', handleLogout);
+
+  /* --------------------------------------------------------------------
+     DASHBOARD RENDER
+     -------------------------------------------------------------------- */
+  function renderDashboard(){
+    const unread = DB.conversations.filter(c=>c.unread).length;
+    const stats = [
+      {label:'Total Contacts',value:DB.contacts.length,icon:'bi-person-lines-fill',color:'primary',trend:'+12% this month',up:true},
+      {label:'Unread Emails',value:unread,icon:'bi-envelope-exclamation-fill',color:'danger',trend:'+2 since yesterday',up:false},
+      {label:'Gmail Conversations',value:DB.conversations.length,icon:'bi-chat-left-text-fill',color:'info',trend:'+5 this week',up:true},
+      {label:'Emails Replied Today',value:7,icon:'bi-reply-all-fill',color:'success',trend:'+18% vs avg',up:true},
+      {label:'WhatsApp Sent Today',value:14,icon:'bi-whatsapp',color:'success',trend:'+4 since noon',up:true},
+      {label:'Products',value:DB.products.length,icon:'bi-box-seam-fill',color:'warning',trend:'2 added this week',up:true}
+    ];
+    document.getElementById('statCardsRow').innerHTML = stats.map(s=>`
+      <div class="col-sm-6 col-lg-4 col-xl-2">
+        <div class="card-c hoverable stat-card h-100">
+          <div class="stat-icon" style="background:var(--color-${s.color}-light);color:var(--color-${s.color});"><i class="bi ${s.icon}"></i></div>
+          <div>
+            <div class="stat-value">${s.value}</div>
+            <div class="stat-label">${s.label}</div>
+          </div>
+          <span class="stat-trend ${s.up?'up':'down'}"><i class="bi bi-arrow-${s.up?'up':'down'}-short"></i>${s.trend}</span>
+        </div>
+      </div>`).join('');
+
+    const actions = [
+      {label:'Import Contacts',sub:'Bulk upload via Excel',icon:'bi-file-earmark-arrow-up-fill',color:'primary',nav:'contacts'},
+      {label:'Open Gmail Inbox',sub:'View conversations',icon:'bi-envelope-open-fill',color:'info',nav:'gmail'},
+      {label:'Add Contact',sub:'Create a new record',icon:'bi-person-plus-fill',color:'success',nav:'contacts'},
+      {label:'Add Product',sub:'Expand your catalog',icon:'bi-box-seam-fill',color:'warning',nav:'products'},
+      {label:'Send WhatsApp',sub:'Use a saved template',icon:'bi-whatsapp',color:'success',nav:'whatsapp'}
+    ];
+    document.getElementById('quickActionsRow').innerHTML = actions.map(a=>`
+      <div class="col-sm-6 col-lg-4 col-xl-2point4" style="flex:0 0 auto;width:calc(20% - .6rem);min-width:180px;">
+        <div class="card-c hoverable quick-action-card w-100" data-nav="${a.nav}">
+          <div class="qa-icon" style="background:var(--color-${a.color}-light);color:var(--color-${a.color});"><i class="bi ${a.icon}"></i></div>
+          <div class="qa-label">${a.label}</div>
+          <div class="qa-sub">${a.sub}</div>
+        </div>
+      </div>`).join('');
+    document.querySelectorAll('#quickActionsRow [data-nav]').forEach(el=>el.addEventListener('click',()=>navigateTo(el.getAttribute('data-nav'))));
+
+    const barData = [
+      {lbl:'Mon',v:62},{lbl:'Tue',v:80},{lbl:'Wed',v:45},{lbl:'Thu',v:95},{lbl:'Fri',v:70},{lbl:'Sat',v:30},{lbl:'Sun',v:20}
+    ];
+    document.getElementById('weeklyBarChart').innerHTML = barData.map(d=>`
+      <div class="bar-col">
+        <div class="bar" style="height:${d.v}%;" title="${d.v} messages" data-bs-toggle="tooltip"></div>
+        <div class="bar-lbl">${d.lbl}</div>
+      </div>`).join('');
+
+    document.getElementById('activityTimeline').innerHTML = DB.activity.map(a=>`
+      <div class="timeline-item">
+        <div class="timeline-dot" style="background:var(--color-${a.color}-light);color:var(--color-${a.color});"><i class="bi ${a.icon}"></i></div>
+        <div>
+          <div class="timeline-text">${a.text}</div>
+          <div class="timeline-time">${a.time}</div>
+        </div>
+      </div>`).join('');
+
+    document.getElementById('productsSnapshot').innerHTML = DB.products.slice(0,5).map(p=>`
+      <div class="d-flex align-items-center justify-content-between py-2" style="border-bottom:1px solid var(--border-color);">
+        <div>
+          <div class="fw-600" style="font-size:13px;">${p.name}</div>
+          <div class="small text-muted-c">${p.code} · ${p.unit}</div>
+        </div>
+        <div class="fw-700" style="font-size:13px;">₹${p.rate.toFixed(2)}</div>
+      </div>`).join('');
+  }
+
+  document.getElementById('dashRefreshBtn').addEventListener('click', ()=>{
+    simulateLoading(()=>{ renderDashboard(); showToast('Dashboard refreshed','success'); initTooltips(); });
+  });
+
+  /* --------------------------------------------------------------------
+     GMAIL INBOX RENDER
+     -------------------------------------------------------------------- */
+  function filteredConversations(){
+    let list = DB.conversations.filter(c => currentGmailFolder==='starred' ? c.starred : c.folder === currentGmailFolder);
+    if (currentGmailFilter === 'unread') list = list.filter(c=>c.unread);
+    if (currentGmailFilter === 'read') list = list.filter(c=>!c.unread);
+    if (currentGmailFilter === 'starred') list = list.filter(c=>c.starred);
+    if (currentGmailFilter === 'archived') list = DB.conversations.filter(c=>c.folder==='archive');
+    const q = document.getElementById('gmailSearchInput').value.trim().toLowerCase();
+    if (q) list = list.filter(c => c.sender.toLowerCase().includes(q) || c.subject.toLowerCase().includes(q) || c.preview.toLowerCase().includes(q));
+    return list;
+  }
+
+  function renderConversationList(){
+    const list = filteredConversations();
+    const wrap = document.getElementById('conversationList');
+    if (!list.length){
+      wrap.innerHTML = `
+        <div class="empty-state">
+          <div class="es-icon"><i class="bi bi-inbox"></i></div>
+          <h6>No conversations found</h6>
+          <p>Try changing filters or search keywords.</p>
+        </div>`;
+      return;
+    }
+    wrap.innerHTML = list.map(c=>`
+      <div class="conv-item ${c.unread?'unread':''} ${selectedConversationId===c.id?'selected':''}" data-conv-id="${c.id}">
+        ${c.unread?'<span class="unread-dot"></span>':''}
+        <div class="avatar-circle" style="background:${colorFor(c.sender)};width:38px;height:38px;font-size:13px;">${initials(c.sender)}</div>
+        <div class="conv-body">
+          <div class="conv-top-row">
+            <span class="conv-sender">${c.sender}</span>
+            <span class="conv-time">${c.time}</span>
+          </div>
+          <div class="conv-subject">${c.subject}</div>
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="conv-preview">${c.preview}</span>
+            <i class="bi ${c.starred?'bi-star-fill':'bi-star'} conv-star ${c.starred?'active':''}" data-star-id="${c.id}"></i>
+          </div>
+        </div>
+      </div>`).join('');
+
+    wrap.querySelectorAll('.conv-item').forEach(el=>{
+      el.addEventListener('click', (e)=>{
+        if (e.target.classList.contains('conv-star')) return;
+        openConversation(parseInt(el.getAttribute('data-conv-id')));
+      });
+    });
+    wrap.querySelectorAll('.conv-star').forEach(el=>{
+      el.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const id = parseInt(el.getAttribute('data-star-id'));
+        const conv = DB.conversations.find(c=>c.id===id);
+        conv.starred = !conv.starred;
+        renderConversationList();
+      });
+    });
+  }
+
+  function openConversation(id){
+    selectedConversationId = id;
+    const conv = DB.conversations.find(c=>c.id===id);
+    conv.unread = false;
+    updateUnreadBadge();
+    renderConversationList();
+
+    const contact = conv.contactId ? DB.contacts.find(c=>c.id===conv.contactId) : null;
+    const pane = document.getElementById('gmailPreviewPane');
+    pane.innerHTML = `
+      <div class="gmail-preview-header">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <div>
+            <h5 class="mb-1">${conv.subject}</h5>
+            <div class="small text-muted-c">${conv.messages.length} message${conv.messages.length>1?'s':''} in this conversation</div>
+          </div>
+          <div class="d-flex gap-2">
+            ${contact
+              ? `<button class="btn btn-outline-c btn-sm" id="btnOpenContact"><i class="bi bi-person-circle me-1"></i>Open Contact</button>`
+              : `<button class="btn btn-primary-c btn-sm" id="btnCreateContact"><i class="bi bi-person-plus-fill me-1"></i>Create Contact</button>`
+            }
+            <button class="btn btn-icon-sq" title="Archive" data-bs-toggle="tooltip"><i class="bi bi-archive"></i></button>
+            <button class="btn btn-icon-sq danger" title="Delete" data-bs-toggle="tooltip"><i class="bi bi-trash"></i></button>
+          </div>
+        </div>
+      </div>
+      <div class="gmail-preview-body" id="threadBody"></div>
+      <div class="reply-box">
+        <div class="rich-toolbar">
+          <button title="Bold" data-bs-toggle="tooltip"><i class="bi bi-type-bold"></i></button>
+          <button title="Italic" data-bs-toggle="tooltip"><i class="bi bi-type-italic"></i></button>
+          <button title="Underline" data-bs-toggle="tooltip"><i class="bi bi-type-underline"></i></button>
+          <button title="Bulleted list" data-bs-toggle="tooltip"><i class="bi bi-list-ul"></i></button>
+          <button title="Numbered list" data-bs-toggle="tooltip"><i class="bi bi-list-ol"></i></button>
+          <button title="Insert link" data-bs-toggle="tooltip"><i class="bi bi-link-45deg"></i></button>
+          <button title="Attach file" data-bs-toggle="tooltip" id="btnAttach"><i class="bi bi-paperclip"></i></button>
+          <button title="Emoji" data-bs-toggle="tooltip"><i class="bi bi-emoji-smile"></i></button>
+        </div>
+        <textarea class="form-control reply-textarea" placeholder="Write your reply..."></textarea>
+        <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary-c btn-sm" id="btnReply"><i class="bi bi-reply-fill me-1"></i>Reply</button>
+            <button class="btn btn-outline-c btn-sm" id="btnReplyAll"><i class="bi bi-reply-all-fill me-1"></i>Reply All</button>
+            <button class="btn btn-outline-c btn-sm" id="btnForward"><i class="bi bi-arrow-right-square-fill me-1"></i>Forward</button>
+          </div>
+          <button class="btn-icon-sq" title="Attach file" data-bs-toggle="tooltip"><i class="bi bi-paperclip"></i></button>
+        </div>
+      </div>`;
+
+    document.getElementById('threadBody').innerHTML = conv.messages.map((m,idx)=>`
+      <div class="thread-message">
+        <div class="thread-message-head" data-msg-toggle="${idx}">
+          <div class="avatar-circle" style="background:${colorFor(m.from)};width:36px;height:36px;font-size:12.5px;">${initials(m.from==='me'?'You':m.from)}</div>
+          <div class="flex-fill">
+            <div class="d-flex justify-content-between">
+              <span class="fw-600" style="font-size:13.4px;">${m.from==='me'?'You':m.from}</span>
+              <span class="small text-muted-c">${m.date}</span>
+            </div>
+            <div class="small text-muted-c">to ${m.to}</div>
+          </div>
+        </div>
+        <div class="thread-message-body">${m.body}</div>
+      </div>`).join('');
+
+    if (contact){
+      document.getElementById('btnOpenContact').addEventListener('click', ()=>openContactProfile(contact.id));
+    } else {
+      document.getElementById('btnCreateContact').addEventListener('click', ()=>{
+        document.getElementById('gmailCreateName').value = conv.sender;
+        document.getElementById('gmailCreateEmail').value = conv.email;
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCreateContactFromMail')).show();
+      });
+    }
+    ['btnReply','btnReplyAll','btnForward'].forEach(btnId=>{
+      const b = document.getElementById(btnId);
+      if (b) b.addEventListener('click', ()=>{
+        showToast('This is a frontend demo — message sending will be enabled once the backend is connected.','primary');
+      });
+    });
+    const attachBtn = document.getElementById('btnAttach');
+    if (attachBtn) attachBtn.addEventListener('click', ()=> showToast('File attachment dialog (demo only)','primary'));
+    initTooltips();
+  }
+
+  function updateUnreadBadge(){
+    const n = DB.conversations.filter(c=>c.unread).length;
+    document.getElementById('navUnreadBadge').textContent = n;
+  }
+
+  document.querySelectorAll('.gmail-folder-item').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      document.querySelectorAll('.gmail-folder-item').forEach(f=>f.classList.remove('active'));
+      el.classList.add('active');
+      currentGmailFolder = el.getAttribute('data-folder');
+      renderConversationList();
+    });
+  });
+  document.querySelectorAll('#gmailFilterChips .filter-chip-btn').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      document.querySelectorAll('#gmailFilterChips .filter-chip-btn').forEach(f=>f.classList.remove('active'));
+      el.classList.add('active');
+      currentGmailFilter = el.getAttribute('data-filter');
+      renderConversationList();
+    });
+  });
+  document.getElementById('gmailSearchInput').addEventListener('input', renderConversationList);
+
+  document.getElementById('gmailCreateContactSaveBtn').addEventListener('click', ()=>{
+    const name = document.getElementById('gmailCreateName').value.trim();
+    const email = document.getElementById('gmailCreateEmail').value.trim();
+    if (!name || !email){ showToast('Please fill in name and email','warning'); return; }
+    const newId = Math.max(...DB.contacts.map(c=>c.id)) + 1;
+    DB.contacts.push({id:newId,name,company:'',email,whatsapp:'',designation:'',status:'Lead',notes:''});
+    const conv = DB.conversations.find(c=>c.id===selectedConversationId);
+    if (conv) conv.contactId = newId;
+    bootstrap.Modal.getInstance(document.getElementById('modalCreateContactFromMail')).hide();
+    showToast('Contact created successfully','success');
+    renderContactsTable();
+    if (selectedConversationId) openConversation(selectedConversationId);
+  });
+
+  /* --------------------------------------------------------------------
+     CONTACTS RENDER
+     -------------------------------------------------------------------- */
+  let contactsFilter = 'all';
+  function statusChipClass(status){
+    return {Active:'chip-success',Lead:'chip-warning',Inactive:'chip-neutral'}[status] || 'chip-neutral';
+  }
+  function filteredContacts(){
+    let list = DB.contacts.slice();
+    if (contactsFilter !== 'all') list = list.filter(c=>c.status === contactsFilter);
+    const q = document.getElementById('contactsSearchInput').value.trim().toLowerCase();
+    if (q) list = list.filter(c => c.name.toLowerCase().includes(q) || c.company.toLowerCase().includes(q) || c.email.toLowerCase().includes(q));
+    return list;
+  }
+  function renderContactsTable(){
+    const list = filteredContacts();
+    const body = document.getElementById('contactsTableBody');
+    document.getElementById('contactsCountLabel').textContent = `${list.length} of ${DB.contacts.length} contacts`;
+    document.getElementById('contactsPaginationInfo').textContent = `Showing 1–${list.length} of ${list.length}`;
+    document.getElementById('contactsEmptyState').innerHTML = '';
+    if (!list.length){
+      body.innerHTML = '';
+      document.getElementById('contactsEmptyState').innerHTML = `
+        <div class="empty-state">
+          <div class="es-icon"><i class="bi bi-person-x"></i></div>
+          <h6>No contacts found</h6>
+          <p>Try adjusting your search or filters, or add a new contact.</p>
+        </div>`;
+      return;
+    }
+    body.innerHTML = list.map(c=>`
+      <tr>
+        <td><div class="avatar-circle" style="background:${colorFor(c.name)};">${initials(c.name)}</div></td>
+        <td><span class="fw-600">${c.name}</span></td>
+        <td>${c.company || '<span class="text-muted-c">—</span>'}</td>
+        <td>${c.email}</td>
+        <td>${c.whatsapp || '<span class="text-muted-c">—</span>'}</td>
+        <td>${c.designation || '<span class="text-muted-c">—</span>'}</td>
+        <td><span class="chip ${statusChipClass(c.status)}"><i class="bi bi-circle-fill"></i>${c.status}</span></td>
+        <td>
+          <div class="d-flex gap-1 justify-content-end">
+            <button class="btn-icon-sq" title="View" data-bs-toggle="tooltip" data-act="view" data-id="${c.id}"><i class="bi bi-eye"></i></button>
+            <button class="btn-icon-sq" title="Edit" data-bs-toggle="tooltip" data-act="edit" data-id="${c.id}"><i class="bi bi-pencil"></i></button>
+            <button class="btn-icon-sq success" title="WhatsApp" data-bs-toggle="tooltip" data-act="wa" data-id="${c.id}"><i class="bi bi-whatsapp"></i></button>
+            <button class="btn-icon-sq" title="Email" data-bs-toggle="tooltip" data-act="mail" data-id="${c.id}"><i class="bi bi-envelope"></i></button>
+            <button class="btn-icon-sq danger" title="Delete" data-bs-toggle="tooltip" data-act="delete" data-id="${c.id}"><i class="bi bi-trash"></i></button>
+          </div>
+        </td>
+      </tr>`).join('');
+
+    body.querySelectorAll('[data-act]').forEach(btn=>{
+      const id = parseInt(btn.getAttribute('data-id'));
+      const act = btn.getAttribute('data-act');
+      btn.addEventListener('click', ()=>{
+        if (act === 'view') openContactProfile(id);
+        if (act === 'edit') openEditContact(id);
+        if (act === 'wa') startWhatsAppFlow(null, id);
+        if (act === 'mail') { navigateTo('gmail'); showToast('Opening Gmail composer (demo only)','primary'); }
+        if (act === 'delete') {
+          const c = DB.contacts.find(x=>x.id===id);
+          openConfirm('Delete contact?', `Are you sure you want to delete "${c.name}"? This action cannot be undone.`, ()=>{
+            DB.contacts = DB.contacts.filter(x=>x.id!==id);
+            renderContactsTable();
+            showToast('Contact deleted','success');
+          });
+        }
+      });
+    });
+    initTooltips();
+  }
+  document.getElementById('contactsSearchInput').addEventListener('input', renderContactsTable);
+  document.querySelectorAll('#contactsFilterChips .filter-chip-btn').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      document.querySelectorAll('#contactsFilterChips .filter-chip-btn').forEach(f=>f.classList.remove('active'));
+      el.classList.add('active');
+      contactsFilter = el.getAttribute('data-filter');
+      renderContactsTable();
+    });
+  });
+
+  function resetContactForm(){
+    editingContactId = null;
+    document.getElementById('contactModalTitle').textContent = 'Add Contact';
+    document.getElementById('formContact').reset();
+    document.getElementById('contactIdField').value = '';
+  }
+  function openEditContact(id){
+    const c = DB.contacts.find(x=>x.id===id);
+    editingContactId = id;
+    document.getElementById('contactModalTitle').textContent = 'Edit Contact';
+    document.getElementById('contactIdField').value = id;
+    document.getElementById('fContactName').value = c.name;
+    document.getElementById('fContactCompany').value = c.company;
+    document.getElementById('fContactEmail').value = c.email;
+    document.getElementById('fContactWhatsapp').value = c.whatsapp;
+    document.getElementById('fContactDesignation').value = c.designation;
+    document.getElementById('fContactStatus').value = c.status;
+    document.getElementById('fContactNotes').value = c.notes;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAddContact')).show();
+  }
+  document.getElementById('modalAddContact').addEventListener('hidden.bs.modal', resetContactForm);
+  document.getElementById('saveContactBtn').addEventListener('click', ()=>{
+    const name = document.getElementById('fContactName').value.trim();
+    const email = document.getElementById('fContactEmail').value.trim();
+    if (!name || !email){ showToast('Name and email are required','warning'); return; }
+    const payload = {
+      name, email,
+      company: document.getElementById('fContactCompany').value.trim(),
+      whatsapp: document.getElementById('fContactWhatsapp').value.trim(),
+      designation: document.getElementById('fContactDesignation').value.trim(),
+      status: document.getElementById('fContactStatus').value,
+      notes: document.getElementById('fContactNotes').value.trim()
+    };
+    if (editingContactId){
+      Object.assign(DB.contacts.find(c=>c.id===editingContactId), payload);
+      showToast('Contact updated successfully','success');
+    } else {
+      const newId = Math.max(...DB.contacts.map(c=>c.id), 0) + 1;
+      DB.contacts.push({id:newId, ...payload});
+      showToast('Contact added successfully','success');
+    }
+    bootstrap.Modal.getInstance(document.getElementById('modalAddContact')).hide();
+    renderContactsTable();
+  });
+
+  document.getElementById('importContactsBtn').addEventListener('click', ()=>{
+    document.getElementById('importModalTitle').textContent = 'Import Contacts from Excel';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalImportExcel')).show();
+  });
+  document.getElementById('exportContactsBtn').addEventListener('click', ()=>{
+    simulateLoading(()=> showToast('Contacts exported to contacts_export.xlsx (demo only)','success'));
+  });
+
+  /* --------------------------------------------------------------------
+     CONTACT PROFILE
+     -------------------------------------------------------------------- */
+  function openContactProfile(id){
+    currentContactProfileId = id;
+    const c = DB.contacts.find(x=>x.id===id);
+    document.getElementById('cpPageTitle').textContent = c.name;
+    document.getElementById('cpAvatar').textContent = initials(c.name);
+    document.getElementById('cpAvatar').style.background = colorFor(c.name);
+    document.getElementById('cpName').textContent = c.name;
+    document.getElementById('cpDesignation').textContent = `${c.designation || 'No designation'} ${c.company ? '· '+c.company : ''}`;
+    document.getElementById('cpStatusChip').className = `chip ${statusChipClass(c.status)}`;
+    document.getElementById('cpStatusChip').textContent = c.status;
+    document.getElementById('cpCompanySide').textContent = c.company || '—';
+    document.getElementById('cpEmailSide').textContent = c.email;
+    document.getElementById('cpWaSide').textContent = c.whatsapp || '—';
+
+    document.getElementById('cpTabInformation').innerHTML = `
+      <div class="row g-3">
+        <div class="col-md-6"><label class="form-label">Name</label><input class="form-control" value="${c.name}" disabled></div>
+        <div class="col-md-6"><label class="form-label">Company</label><input class="form-control" value="${c.company||''}" disabled></div>
+        <div class="col-md-6"><label class="form-label">Email</label><input class="form-control" value="${c.email}" disabled></div>
+        <div class="col-md-6"><label class="form-label">WhatsApp</label><input class="form-control" value="${c.whatsapp||''}" disabled></div>
+        <div class="col-md-6"><label class="form-label">Designation</label><input class="form-control" value="${c.designation||''}" disabled></div>
+        <div class="col-md-6"><label class="form-label">Status</label><input class="form-control" value="${c.status}" disabled></div>
+      </div>`;
+
+    const threads = DB.conversations.filter(cv=>cv.contactId === id);
+    document.getElementById('cpTabGmail').innerHTML = threads.length ? threads.map(t=>`
+      <div class="conv-item" style="border-radius:var(--radius-sm);border:1px solid var(--border-color);margin-bottom:8px;" data-thread-id="${t.id}">
+        <div class="avatar-circle" style="background:${colorFor(t.sender)};width:38px;height:38px;font-size:13px;">${initials(t.sender)}</div>
+        <div class="conv-body">
+          <div class="conv-top-row"><span class="conv-sender">${t.subject}</span><span class="conv-time">${t.time}</span></div>
+          <div class="conv-preview">${t.preview}</div>
+        </div>
+      </div>`).join('') : `<div class="empty-state"><div class="es-icon"><i class="bi bi-envelope"></i></div><h6>No Gmail conversations yet</h6><p>Emails exchanged with this contact will appear here.</p></div>`;
+    document.getElementById('cpTabGmail').querySelectorAll('[data-thread-id]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        navigateTo('gmail');
+        setTimeout(()=>openConversation(parseInt(el.getAttribute('data-thread-id'))), 480);
+      });
+    });
+
+    document.getElementById('cpTabWhatsapp').innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <div class="fw-600">Last Message Sent</div>
+          <div class="small text-muted-c">3 days ago · Template used: <b>Order Confirmation</b></div>
+        </div>
+        <button class="btn btn-whatsapp-c btn-sm" id="cpSendWaBtn"><i class="bi bi-whatsapp me-1"></i>Send WhatsApp</button>
+      </div>
+      <div class="wa-bubble" style="max-width:420px;">Hi ${c.name.split(' ')[0]}, this is Seva from CommsHub. Your order has been confirmed and will be processed by 12 Jul 2026. Thank you for your business!</div>`;
+    document.getElementById('cpSendWaBtn').addEventListener('click', ()=> startWhatsAppFlow(null, id));
+    document.getElementById('cpWaBtn').onclick = ()=> startWhatsAppFlow(null, id);
+
+    document.getElementById('cpTabNotes').innerHTML = `
+      <label class="form-label">Internal Notes</label>
+      <textarea class="form-control" rows="10" id="cpNotesArea">${c.notes||''}</textarea>
+      <button class="btn btn-primary-c btn-sm mt-3" id="cpSaveNotesBtn"><i class="bi bi-check2 me-1"></i>Save Notes</button>`;
+    document.getElementById('cpSaveNotesBtn').addEventListener('click', ()=>{
+      c.notes = document.getElementById('cpNotesArea').value;
+      showToast('Notes saved successfully','success');
+    });
+
+    document.getElementById('cpEditBtn').onclick = ()=> openEditContact(id);
+
+    document.querySelectorAll('#cpTabs .nav-link').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('#cpTabs .nav-link')[0].classList.add('active');
+    document.querySelectorAll('.cp-tab-pane').forEach((p,idx)=> p.classList.toggle('d-none', idx!==0));
+
+    navigateTo('contact-profile');
+  }
+  document.querySelectorAll('#cpTabs .nav-link').forEach(tab=>{
+    tab.addEventListener('click', ()=>{
+      document.querySelectorAll('#cpTabs .nav-link').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      const key = tab.getAttribute('data-tab');
+      const map = {information:'cpTabInformation',gmail:'cpTabGmail',whatsapp:'cpTabWhatsapp',notes:'cpTabNotes'};
+      Object.values(map).forEach(id=>document.getElementById(id).classList.add('d-none'));
+      document.getElementById(map[key]).classList.remove('d-none');
+    });
+  });
+
+  /* --------------------------------------------------------------------
+     WHATSAPP TEMPLATES RENDER
+     -------------------------------------------------------------------- */
+  function sampleFill(msg){
+    return msg.replaceAll('{name}','Priya').replaceAll('{company}','CommsHub').replaceAll('{employee}','Seva').replaceAll('{date}','12 Jul 2026');
+  }
+  function filteredTemplates(){
+    const q = document.getElementById('templatesSearchInput').value.trim().toLowerCase();
+    return DB.templates.filter(t => !q || t.name.toLowerCase().includes(q) || t.message.toLowerCase().includes(q));
+  }
+  function renderTemplatesGrid(){
+    const list = filteredTemplates();
+    const grid = document.getElementById('templatesGrid');
+    if (!list.length){
+      grid.innerHTML = `<div class="col-12"><div class="empty-state"><div class="es-icon"><i class="bi bi-whatsapp"></i></div><h6>No templates found</h6><p>Try a different search or create a new template.</p></div></div>`;
+      return;
+    }
+    grid.innerHTML = list.map(t=>`
+      <div class="col-sm-6 col-lg-4">
+        <div class="card-c hoverable template-card h-100">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="tpl-icon"><i class="bi bi-whatsapp"></i></div>
+            <div class="d-flex gap-1">
+              <button class="btn-icon-sq" title="Edit" data-bs-toggle="tooltip" data-act="edit-tpl" data-id="${t.id}"><i class="bi bi-pencil"></i></button>
+              <button class="btn-icon-sq danger" title="Delete" data-bs-toggle="tooltip" data-act="delete-tpl" data-id="${t.id}"><i class="bi bi-trash"></i></button>
+            </div>
+          </div>
+          <div class="tpl-name">${t.name}</div>
+          <div class="tpl-preview text-trunc-2">${sampleFill(t.message)}</div>
+          <button class="btn btn-whatsapp-c btn-sm mt-auto" data-act="use-tpl" data-id="${t.id}"><i class="bi bi-send-fill me-1"></i>Use Template</button>
+        </div>
+      </div>`).join('');
+
+    grid.querySelectorAll('[data-act]').forEach(btn=>{
+      const id = parseInt(btn.getAttribute('data-id'));
+      const act = btn.getAttribute('data-act');
+      btn.addEventListener('click', ()=>{
+        if (act === 'edit-tpl') openEditTemplate(id);
+        if (act === 'use-tpl') startWhatsAppFlow(id, null);
+        if (act === 'delete-tpl'){
+          const t = DB.templates.find(x=>x.id===id);
+          openConfirm('Delete template?', `Are you sure you want to delete "${t.name}"? This action cannot be undone.`, ()=>{
+            DB.templates = DB.templates.filter(x=>x.id!==id);
+            renderTemplatesGrid();
+            populateDefaultTemplateSelect();
+            showToast('Template deleted','success');
+          });
+        }
+      });
+    });
+    initTooltips();
+  }
+  document.getElementById('templatesSearchInput').addEventListener('input', renderTemplatesGrid);
+
+  function resetTemplateForm(){
+    editingTemplateId = null;
+    document.getElementById('templateModalTitle').textContent = 'Create Template';
+    document.getElementById('fTemplateName').value = '';
+    document.getElementById('fTemplateMessage').value = '';
+    document.getElementById('templateIdField').value = '';
+    updateTemplatePreview();
+  }
+  function openEditTemplate(id){
+    const t = DB.templates.find(x=>x.id===id);
+    editingTemplateId = id;
+    document.getElementById('templateModalTitle').textContent = 'Edit Template';
+    document.getElementById('templateIdField').value = id;
+    document.getElementById('fTemplateName').value = t.name;
+    document.getElementById('fTemplateMessage').value = t.message;
+    updateTemplatePreview();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTemplateEditor')).show();
+  }
+  document.getElementById('createTemplateBtn').addEventListener('click', ()=>{
+    resetTemplateForm();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTemplateEditor')).show();
+  });
+  document.getElementById('modalTemplateEditor').addEventListener('hidden.bs.modal', resetTemplateForm);
+
+  function updateTemplatePreview(){
+    const msg = document.getElementById('fTemplateMessage').value;
+    document.getElementById('templateLivePreview').textContent = msg ? sampleFill(msg) : 'Your message preview will appear here...';
+  }
+  document.getElementById('fTemplateMessage').addEventListener('input', updateTemplatePreview);
+  document.querySelectorAll('#modalTemplateEditor .placeholder-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const ta = document.getElementById('fTemplateMessage');
+      const ph = btn.getAttribute('data-ph');
+      const start = ta.selectionStart || ta.value.length;
+      const end = ta.selectionEnd || ta.value.length;
+      ta.value = ta.value.slice(0,start) + ph + ta.value.slice(end);
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = start + ph.length;
+      updateTemplatePreview();
+    });
+  });
+  document.getElementById('saveTemplateBtn').addEventListener('click', ()=>{
+    const name = document.getElementById('fTemplateName').value.trim();
+    const message = document.getElementById('fTemplateMessage').value.trim();
+    if (!name || !message){ showToast('Template name and message are required','warning'); return; }
+    if (editingTemplateId){
+      Object.assign(DB.templates.find(t=>t.id===editingTemplateId), {name,message});
+      showToast('Template updated successfully','success');
+    } else {
+      const newId = Math.max(...DB.templates.map(t=>t.id), 0) + 1;
+      DB.templates.push({id:newId,name,message});
+      showToast('Template created successfully','success');
+    }
+    bootstrap.Modal.getInstance(document.getElementById('modalTemplateEditor')).hide();
+    renderTemplatesGrid();
+    populateDefaultTemplateSelect();
+  });
+
+  /* --------------------------------------------------------------------
+     WHATSAPP "USE TEMPLATE" FLOW (phone selector -> editor -> open)
+     -------------------------------------------------------------------- */
+  function startWhatsAppFlow(templateId, contactId){
+    waFlowContext = {templateId, recipient:null};
+    if (contactId){
+      const c = DB.contacts.find(x=>x.id===contactId);
+      waFlowContext.recipient = {name:c.name, number:c.whatsapp || 'Not available'};
+      openWaMessageEditor(templateId ? DB.templates.find(t=>t.id===templateId) : DB.templates[0]);
+      return;
+    }
+    renderPhoneSelectorList();
+    document.getElementById('phoneSelectorManual').value = '';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPhoneSelector')).show();
+  }
+  function renderPhoneSelectorList(){
+    const q = document.getElementById('phoneSelectorSearch').value.trim().toLowerCase();
+    const list = DB.contacts.filter(c => !q || c.name.toLowerCase().includes(q) || (c.whatsapp||'').includes(q));
+    document.getElementById('phoneSelectorList').innerHTML = list.map(c=>`
+      <div class="d-flex align-items-center gap-2 p-2 rounded cursor-pointer phone-select-item" data-id="${c.id}" style="border:1px solid var(--border-color);border-radius:var(--radius-sm);margin-bottom:6px;">
+        <div class="avatar-circle" style="background:${colorFor(c.name)};width:34px;height:34px;font-size:12px;">${initials(c.name)}</div>
+        <div>
+          <div class="fw-600" style="font-size:13px;">${c.name}</div>
+          <div class="small text-muted-c">${c.whatsapp || 'No number on file'}</div>
+        </div>
+      </div>`).join('');
+    document.getElementById('phoneSelectorList').querySelectorAll('.phone-select-item').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        document.querySelectorAll('.phone-select-item').forEach(i=>i.style.background='var(--bg-surface)');
+        el.style.background = 'var(--color-primary-light)';
+        el.dataset.selected = 'true';
+        document.querySelectorAll('.phone-select-item').forEach(i=>{ if(i!==el) delete i.dataset.selected; });
+      });
+    });
+  }
+  document.getElementById('phoneSelectorSearch').addEventListener('input', renderPhoneSelectorList);
+  document.getElementById('phoneSelectorContinueBtn').addEventListener('click', ()=>{
+    const selectedEl = document.querySelector('.phone-select-item[data-selected="true"]');
+    const manual = document.getElementById('phoneSelectorManual').value.trim();
+    if (selectedEl){
+      const c = DB.contacts.find(x=>x.id===parseInt(selectedEl.getAttribute('data-id')));
+      waFlowContext.recipient = {name:c.name, number:c.whatsapp || 'Not available'};
+    } else if (manual){
+      waFlowContext.recipient = {name:'Manual Entry', number:manual};
+    } else {
+      showToast('Please select a contact or enter a number','warning');
+      return;
+    }
+    bootstrap.Modal.getInstance(document.getElementById('modalPhoneSelector')).hide();
+    openWaMessageEditor(waFlowContext.templateId ? DB.templates.find(t=>t.id===waFlowContext.templateId) : DB.templates[0]);
+  });
+
+  function openWaMessageEditor(template){
+    document.getElementById('waEditorRecipient').textContent = `${waFlowContext.recipient.name} (${waFlowContext.recipient.number})`;
+    const filled = sampleFill(template.message).replace('Priya', waFlowContext.recipient.name.split(' ')[0]);
+    document.getElementById('waEditorMessage').value = filled;
+    document.getElementById('waEditorPreview').textContent = filled;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalWaMessageEditor')).show();
+  }
+  document.getElementById('waEditorMessage').addEventListener('input', (e)=>{
+    document.getElementById('waEditorPreview').textContent = e.target.value;
+  });
+  document.getElementById('openWhatsappBtn').addEventListener('click', ()=>{
+    bootstrap.Modal.getInstance(document.getElementById('modalWaMessageEditor')).hide();
+    simulateLoading(()=> showToast(`WhatsApp opened for ${waFlowContext.recipient.name} (demo only — backend integration required to send)`,'success'), 500);
+  });
+
+  /* --------------------------------------------------------------------
+     PRODUCTS RENDER
+     -------------------------------------------------------------------- */
+  let productsFilter = 'all';
+  function filteredProducts(){
+    let list = DB.products.slice();
+    if (productsFilter !== 'all') list = list.filter(p=>p.unit === productsFilter);
+    const q = document.getElementById('productsSearchInput').value.trim().toLowerCase();
+    if (q) list = list.filter(p => p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) || p.spec.toLowerCase().includes(q));
+    return list;
+  }
+  function renderProductsTable(){
+    const list = filteredProducts();
+    const body = document.getElementById('productsTableBody');
+    document.getElementById('productsCountLabel').textContent = `${list.length} of ${DB.products.length} products`;
+    document.getElementById('productsPaginationInfo').textContent = `Showing 1–${list.length} of ${list.length}`;
+    document.getElementById('productsEmptyState').innerHTML = '';
+    if (!list.length){
+      body.innerHTML = '';
+      document.getElementById('productsEmptyState').innerHTML = `
+        <div class="empty-state">
+          <div class="es-icon"><i class="bi bi-box"></i></div>
+          <h6>No products found</h6>
+          <p>Try adjusting your search or filters, or add a new product.</p>
+        </div>`;
+      return;
+    }
+    body.innerHTML = list.map(p=>`
+      <tr>
+        <td><span class="fw-600">${p.code}</span></td>
+        <td>${p.name}</td>
+        <td>${p.size}</td>
+        <td>${p.weight}</td>
+        <td><span class="chip chip-info">${p.unit}</span></td>
+        <td class="fw-600">₹${Number(p.rate).toFixed(2)}</td>
+        <td class="small text-muted-c">${p.spec}</td>
+        <td>
+          <div class="d-flex gap-1 justify-content-end">
+            <button class="btn-icon-sq" title="View" data-bs-toggle="tooltip" data-act="view-p" data-id="${p.id}"><i class="bi bi-eye"></i></button>
+            <button class="btn-icon-sq" title="Edit" data-bs-toggle="tooltip" data-act="edit-p" data-id="${p.id}"><i class="bi bi-pencil"></i></button>
+            <button class="btn-icon-sq danger" title="Delete" data-bs-toggle="tooltip" data-act="delete-p" data-id="${p.id}"><i class="bi bi-trash"></i></button>
+          </div>
+        </td>
+      </tr>`).join('');
+
+    body.querySelectorAll('[data-act]').forEach(btn=>{
+      const id = parseInt(btn.getAttribute('data-id'));
+      const act = btn.getAttribute('data-act');
+      btn.addEventListener('click', ()=>{
+        if (act === 'view-p'){ const p = DB.products.find(x=>x.id===id); showToast(`${p.name} — ${p.spec}`,'primary'); }
+        if (act === 'edit-p') openEditProduct(id);
+        if (act === 'delete-p'){
+          const p = DB.products.find(x=>x.id===id);
+          openConfirm('Delete product?', `Are you sure you want to delete "${p.name}"? This action cannot be undone.`, ()=>{
+            DB.products = DB.products.filter(x=>x.id!==id);
+            renderProductsTable();
+            showToast('Product deleted','success');
+          });
+        }
+      });
+    });
+    initTooltips();
+  }
+  document.getElementById('productsSearchInput').addEventListener('input', renderProductsTable);
+  document.querySelectorAll('#productsFilterChips .filter-chip-btn').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      document.querySelectorAll('#productsFilterChips .filter-chip-btn').forEach(f=>f.classList.remove('active'));
+      el.classList.add('active');
+      productsFilter = el.getAttribute('data-filter');
+      renderProductsTable();
+    });
+  });
+
+  function resetProductForm(){
+    editingProductId = null;
+    document.getElementById('productModalTitle').textContent = 'Add Product';
+    document.getElementById('formProduct').reset();
+    document.getElementById('productIdField').value = '';
+  }
+  function openEditProduct(id){
+    const p = DB.products.find(x=>x.id===id);
+    editingProductId = id;
+    document.getElementById('productModalTitle').textContent = 'Edit Product';
+    document.getElementById('productIdField').value = id;
+    document.getElementById('fProductCode').value = p.code;
+    document.getElementById('fProductName').value = p.name;
+    document.getElementById('fProductSize').value = p.size;
+    document.getElementById('fProductWeight').value = p.weight;
+    document.getElementById('fProductUnit').value = p.unit;
+    document.getElementById('fProductRate').value = p.rate;
+    document.getElementById('fProductSpec').value = p.spec;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAddProduct')).show();
+  }
+  document.getElementById('modalAddProduct').addEventListener('hidden.bs.modal', resetProductForm);
+  document.getElementById('saveProductBtn').addEventListener('click', ()=>{
+    const code = document.getElementById('fProductCode').value.trim();
+    const name = document.getElementById('fProductName').value.trim();
+    if (!code || !name){ showToast('Product code and name are required','warning'); return; }
+    const payload = {
+      code, name,
+      size: document.getElementById('fProductSize').value.trim(),
+      weight: document.getElementById('fProductWeight').value.trim(),
+      unit: document.getElementById('fProductUnit').value,
+      rate: parseFloat(document.getElementById('fProductRate').value) || 0,
+      spec: document.getElementById('fProductSpec').value.trim()
+    };
+    if (editingProductId){
+      Object.assign(DB.products.find(p=>p.id===editingProductId), payload);
+      showToast('Product updated successfully','success');
+    } else {
+      const newId = Math.max(...DB.products.map(p=>p.id), 0) + 1;
+      DB.products.push({id:newId, ...payload});
+      showToast('Product added successfully','success');
+    }
+    bootstrap.Modal.getInstance(document.getElementById('modalAddProduct')).hide();
+    renderProductsTable();
+  });
+
+  document.getElementById('importProductsBtn').addEventListener('click', ()=>{
+    document.getElementById('importModalTitle').textContent = 'Import Products from Excel';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalImportExcel')).show();
+  });
+  document.getElementById('exportProductsBtn').addEventListener('click', ()=>{
+    simulateLoading(()=> showToast('Products exported to products_export.xlsx (demo only)','success'));
+  });
+  document.getElementById('importExcelActionBtn').addEventListener('click', ()=>{
+    bootstrap.Modal.getInstance(document.getElementById('modalImportExcel')).hide();
+    simulateLoading(()=> showToast('Import completed successfully (demo only)','success'), 700);
+  });
+
+  /* --------------------------------------------------------------------
+     SETTINGS
+     -------------------------------------------------------------------- */
+  function populateDefaultTemplateSelect(){
+    document.getElementById('defaultTemplateSelect').innerHTML = DB.templates.map(t=>`<option>${t.name}</option>`).join('');
+  }
+  let gmailConnected = true;
+  function renderGmailIntegrationState(){
+    const chip = document.getElementById('gmailStatusChip');
+    const label = document.getElementById('gmailAccountLabel');
+    const connectBtn = document.getElementById('gmailConnectBtn');
+    const disconnectBtn = document.getElementById('gmailDisconnectBtn');
+    if (gmailConnected){
+      chip.className = 'chip chip-success'; chip.innerHTML = '<i class="bi bi-circle-fill"></i>Connected';
+      label.textContent = 'seva.animals@gmail.com';
+      connectBtn.classList.add('d-none'); disconnectBtn.classList.remove('d-none');
+    } else {
+      chip.className = 'chip chip-danger'; chip.innerHTML = '<i class="bi bi-circle-fill"></i>Disconnected';
+      label.textContent = 'No account connected';
+      connectBtn.classList.remove('d-none'); disconnectBtn.classList.add('d-none');
+    }
+  }
+  document.getElementById('gmailConnectBtn').addEventListener('click', ()=>{
+    simulateLoading(()=>{ gmailConnected = true; renderGmailIntegrationState(); showToast('Gmail account connected (demo only)','success'); }, 600);
+  });
+  document.getElementById('gmailDisconnectBtn').addEventListener('click', ()=>{
+    openConfirm('Disconnect Gmail?','You will stop receiving new email conversations until reconnected.', ()=>{
+      gmailConnected = false; renderGmailIntegrationState(); showToast('Gmail account disconnected','warning');
+    });
+  });
+
+  /* --------------------------------------------------------------------
+     GLOBAL SEARCH (topbar) — dummy: jumps to contacts/products with query
+     -------------------------------------------------------------------- */
+  document.getElementById('globalSearchInput').addEventListener('keydown', (e)=>{
+    if (e.key === 'Enter' && e.target.value.trim()){
+      navigateTo('contacts');
+      document.getElementById('contactsSearchInput').value = e.target.value.trim();
+      renderContactsTable();
+      showToast(`Searching for "${e.target.value.trim()}" across contacts`,'primary');
+    }
+  });
+
+  /* --------------------------------------------------------------------
+     TOOLTIPS
+     -------------------------------------------------------------------- */
+  function initTooltips(){
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el=>{
+      const existing = bootstrap.Tooltip.getInstance(el);
+      if (existing) existing.dispose();
+      new bootstrap.Tooltip(el);
+    });
+  }
+
+  /* --------------------------------------------------------------------
+     INITIAL BOOT
+     -------------------------------------------------------------------- */
+  function boot(){
+    renderDashboard();
+    renderConversationList();
+    renderContactsTable();
+    renderTemplatesGrid();
+    renderProductsTable();
+    populateDefaultTemplateSelect();
+    renderGmailIntegrationState();
+    updateUnreadBadge();
+    initTooltips();
+  }
+  boot();
+
+})();
+</script>
+</body>
+</html>
