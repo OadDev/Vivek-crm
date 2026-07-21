@@ -28,6 +28,6 @@ class ContactSyncSetting extends Model
 
     public static function current(): self
     {
-        return static::firstOrCreate(['id' => 1], ['source_type' => 'excel_upload']);
+        return static::firstOrCreate(['id' => 1], ['source_type' => 'google_sheet']);
     }
 }

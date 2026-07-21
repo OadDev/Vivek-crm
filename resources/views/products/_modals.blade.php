@@ -64,71 +64,82 @@
   </div>
 </div>
 
-{{-- Standardized Copper Reference (quick-lookup popup) --}}
-<div class="modal fade" id="modalCopperStandards" tabindex="-1">
+{{-- Standard Reference Tables (quick-lookup popup, one accordion item per table) --}}
+<div class="modal fade" id="modalReferenceTables" tabindex="-1">
   <div class="modal-dialog modal-xl modal-dialog-centered">
-    <div class="modal-content">
+    <div class="modal-content" style="max-height:88vh;">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-lightning-charge-fill me-1" style="color:var(--color-warning);"></i>Standard Copper Conductor Reference</h5>
+        <h5 class="modal-title"><i class="bi bi-lightning-charge-fill me-1" style="color:var(--color-warning);"></i>Standard Reference Tables</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body">
-        <p class="small text-muted-c">Indicative standard values for quick lookup while filling in product specifications. Edit or add rows to match your exact spec sheet.</p>
-        <div class="table-responsive-c mb-3">
-          <table class="table-c">
-            <thead>
-              <tr><th>Size</th><th>Cross-section (sqmm)</th><th>Weight (kg/km)</th><th>Current Rating (A)</th><th>Standard</th><th class="text-end">Actions</th></tr>
-            </thead>
-            <tbody>
-              @forelse ($copperStandards as $cs)
-              <tr>
-                <td class="fw-600">{{ $cs->size_designation }}</td>
-                <td>{{ $cs->cross_section_sqmm }}</td>
-                <td>{{ $cs->weight_per_km_kg }}</td>
-                <td>{{ $cs->current_rating_amps }}</td>
-                <td class="small text-muted-c">{{ $cs->standard_reference }}</td>
-                <td>
-                  <div class="d-flex gap-1 justify-content-end">
-                    <button type="button" class="btn-icon-sq js-edit-copper"
-                      data-id="{{ $cs->id }}" data-size="{{ $cs->size_designation }}" data-csa="{{ $cs->cross_section_sqmm }}"
-                      data-weight="{{ $cs->weight_per_km_kg }}" data-amps="{{ $cs->current_rating_amps }}" data-ref="{{ $cs->standard_reference }}"
-                      title="Edit"><i class="bi bi-pencil"></i></button>
-                    <form method="POST" action="{{ route('copper-standards.destroy', $cs) }}" data-confirm="Remove this reference row?">
-                      @csrf @method('DELETE')
-                      <button type="submit" class="btn-icon-sq danger" title="Delete"><i class="bi bi-trash"></i></button>
-                    </form>
+      <div class="modal-body" style="overflow-y:auto;">
+        <p class="small text-muted-c">Quick-lookup reference tables (ASTM/EN copper tube standards, etc.) while filling in product specifications. Each table's data can be replaced by pasting a fresh range copied directly from Excel or Google Sheets.</p>
+
+        <div class="accordion" id="referenceTablesAccordion">
+          @forelse ($referenceTables as $rt)
+          <div class="accordion-item" style="border-color:var(--border-color);background:var(--bg-surface);">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#rtBody{{ $rt->id }}" style="background:var(--bg-surface-2);color:var(--text-primary);">
+                <span class="fw-600">{{ $rt->title }}</span>
+              </button>
+            </h2>
+            <div id="rtBody{{ $rt->id }}" class="accordion-collapse collapse" data-bs-parent="#referenceTablesAccordion">
+              <div class="accordion-body">
+                @if ($rt->description)
+                  <p class="small text-muted-c">{{ $rt->description }}</p>
+                @endif
+                <div class="table-responsive-c mb-3" style="max-height:320px;overflow-y:auto;">
+                  <table class="table-c">
+                    <thead>
+                      <tr>@foreach ($rt->headers as $h)<th>{{ $h }}</th>@endforeach</tr>
+                    </thead>
+                    <tbody>
+                      @foreach ($rt->rows as $row)
+                      <tr>@foreach ($row as $cell)<td>{{ $cell }}</td>@endforeach</tr>
+                      @endforeach
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="d-flex gap-2 mb-2">
+                  <button type="button" class="btn btn-outline-c btn-sm js-toggle-edit-rt" data-target="rtEdit{{ $rt->id }}"><i class="bi bi-clipboard-check me-1"></i>Replace via Paste</button>
+                  <form method="POST" action="{{ route('reference-tables.destroy', $rt) }}" data-confirm="Remove table &quot;{{ $rt->title }}&quot;?">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="btn btn-outline-c btn-sm text-danger"><i class="bi bi-trash me-1"></i>Delete Table</button>
+                  </form>
+                </div>
+
+                <form method="POST" action="{{ route('reference-tables.update', $rt) }}" id="rtEdit{{ $rt->id }}" class="d-none" style="background:var(--bg-surface-2);border-radius:var(--radius-sm);padding:12px;">
+                  @csrf @method('PUT')
+                  <div class="row g-2">
+                    <div class="col-md-6"><label class="form-label">Title</label><input type="text" name="title" class="form-control form-control-sm" value="{{ $rt->title }}" required></div>
+                    <div class="col-md-6"><label class="form-label">Description</label><input type="text" name="description" class="form-control form-control-sm" value="{{ $rt->description }}"></div>
+                    <div class="col-12">
+                      <label class="form-label">Paste new data (optional — select the range in Google Sheets/Excel including the header row, copy, and paste here to replace all rows)</label>
+                      <textarea name="pasted_data" class="form-control form-control-sm" rows="4" placeholder="Paste tab-separated data here to replace this table's rows..."></textarea>
+                    </div>
+                    <div class="col-12"><button type="submit" class="btn btn-primary-c btn-sm">Save Table</button></div>
                   </div>
-                </td>
-              </tr>
-              @empty
-              <tr><td colspan="6" class="text-center small text-muted-c py-4">No reference rows yet.</td></tr>
-              @endforelse
-            </tbody>
-          </table>
+                </form>
+              </div>
+            </div>
+          </div>
+          @empty
+          <div class="empty-state"><div class="es-icon"><i class="bi bi-table"></i></div><h6>No reference tables yet</h6><p>Add one below by pasting data copied from Excel or Google Sheets.</p></div>
+          @endforelse
         </div>
 
-        <form method="POST" action="{{ route('copper-standards.store') }}" id="formAddCopper" class="row g-2 align-items-end">
+        <hr>
+        <h6 class="fw-700">Add New Reference Table</h6>
+        <form method="POST" action="{{ route('reference-tables.store') }}" class="row g-2">
           @csrf
-          <div class="col"><label class="form-label">Size</label><input type="text" name="size_designation" class="form-control form-control-sm" placeholder="e.g. 2.5 sqmm" required></div>
-          <div class="col"><label class="form-label">Cross-section</label><input type="text" name="cross_section_sqmm" class="form-control form-control-sm"></div>
-          <div class="col"><label class="form-label">Weight kg/km</label><input type="text" name="weight_per_km_kg" class="form-control form-control-sm"></div>
-          <div class="col"><label class="form-label">Current (A)</label><input type="text" name="current_rating_amps" class="form-control form-control-sm"></div>
-          <div class="col"><label class="form-label">Standard</label><input type="text" name="standard_reference" class="form-control form-control-sm" placeholder="e.g. IS 8130"></div>
-          <div class="col-auto"><button type="submit" class="btn btn-primary-c btn-sm"><i class="bi bi-plus-lg"></i></button></div>
-        </form>
-
-        <form method="POST" id="formEditCopper" class="row g-2 align-items-end mt-2 d-none" style="background:var(--color-primary-light);border-radius:var(--radius-sm);padding:10px;">
-          @csrf @method('PUT')
-          <div class="col-12 small fw-600 mb-1">Editing row — update values and save</div>
-          <div class="col"><input type="text" name="size_designation" class="form-control form-control-sm" required></div>
-          <div class="col"><input type="text" name="cross_section_sqmm" class="form-control form-control-sm"></div>
-          <div class="col"><input type="text" name="weight_per_km_kg" class="form-control form-control-sm"></div>
-          <div class="col"><input type="text" name="current_rating_amps" class="form-control form-control-sm"></div>
-          <div class="col"><input type="text" name="standard_reference" class="form-control form-control-sm"></div>
-          <div class="col-auto d-flex gap-1">
-            <button type="submit" class="btn btn-primary-c btn-sm"><i class="bi bi-check2"></i></button>
-            <button type="button" class="btn btn-light-c btn-sm" id="cancelEditCopperBtn"><i class="bi bi-x"></i></button>
+          <div class="col-md-6"><label class="form-label">Title *</label><input type="text" name="title" class="form-control form-control-sm" placeholder="e.g. ASTM B88 Type K — Dimensions (inches)" required></div>
+          <div class="col-md-6"><label class="form-label">Description</label><input type="text" name="description" class="form-control form-control-sm" placeholder="Optional short note"></div>
+          <div class="col-12">
+            <label class="form-label">Paste data from Excel/Google Sheets *</label>
+            <textarea name="pasted_data" class="form-control form-control-sm" rows="5" placeholder="Select the range including the header row in your sheet, copy (Ctrl/Cmd+C), and paste it here..." required></textarea>
           </div>
+          <div class="col-12"><button type="submit" class="btn btn-primary-c btn-sm"><i class="bi bi-plus-lg me-1"></i>Add Table</button></div>
         </form>
       </div>
       <div class="modal-footer">
@@ -140,22 +151,10 @@
 
 @push('scripts')
 <script>
-document.querySelectorAll('.js-edit-copper').forEach(function (btn) {
+document.querySelectorAll('.js-toggle-edit-rt').forEach(function (btn) {
   btn.addEventListener('click', function () {
-    var form = document.getElementById('formEditCopper');
-    form.action = '{{ url('copper-standards') }}/' + btn.dataset.id;
-    form.querySelector('[name=size_designation]').value = btn.dataset.size || '';
-    form.querySelector('[name=cross_section_sqmm]').value = btn.dataset.csa || '';
-    form.querySelector('[name=weight_per_km_kg]').value = btn.dataset.weight || '';
-    form.querySelector('[name=current_rating_amps]').value = btn.dataset.amps || '';
-    form.querySelector('[name=standard_reference]').value = btn.dataset.ref || '';
-    form.classList.remove('d-none');
-    document.getElementById('formAddCopper').classList.add('d-none');
+    document.getElementById(btn.dataset.target).classList.toggle('d-none');
   });
-});
-document.getElementById('cancelEditCopperBtn').addEventListener('click', function () {
-  document.getElementById('formEditCopper').classList.add('d-none');
-  document.getElementById('formAddCopper').classList.remove('d-none');
 });
 </script>
 @endpush

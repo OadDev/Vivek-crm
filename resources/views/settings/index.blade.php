@@ -103,6 +103,66 @@
     </div>
   </div>
 
+  {{-- Leads Data Source (Google Sheets / Excel) --}}
+  <div class="col-12">
+    <div class="card-c">
+      <div class="card-c-body">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div class="settings-card-icon" style="background:var(--color-info-light);color:var(--color-info);"><i class="bi bi-google"></i></div>
+          <h5 class="mb-0">Leads Data Source</h5>
+          <span class="chip {{ $syncSetting->is_enabled ? 'chip-success' : 'chip-neutral' }} ms-auto"><i class="bi bi-circle-fill"></i>{{ $syncSetting->is_enabled ? 'Enabled' : 'Disabled' }}</span>
+        </div>
+        <p class="small text-muted-c">Link a Google Sheet (shared as "Anyone with the link") or upload an Excel file so new leads/contacts flow in automatically. Same source used by the Contacts page — editing it here updates it there too.</p>
+
+        <form method="POST" action="{{ route('contacts.sync-settings') }}" enctype="multipart/form-data" class="row g-3">
+          @csrf
+          <div class="col-md-3">
+            <label class="form-label">Source Type</label>
+            <select class="form-select" name="source_type" id="settingsSyncSourceType">
+              <option value="google_sheet" {{ $syncSetting->source_type === 'google_sheet' ? 'selected' : '' }}>Google Sheet (link)</option>
+              <option value="excel_upload" {{ $syncSetting->source_type === 'excel_upload' ? 'selected' : '' }}>Uploaded Excel File</option>
+            </select>
+          </div>
+          <div class="col-md-5" id="settingsSyncSheetField">
+            <label class="form-label">Google Sheet URL</label>
+            <input type="url" class="form-control" name="google_sheet_url" value="{{ $syncSetting->google_sheet_url }}" placeholder="https://docs.google.com/spreadsheets/d/...">
+          </div>
+          <div class="col-md-5" id="settingsSyncExcelField">
+            <label class="form-label">Excel File {{ $syncSetting->excel_original_name ? '(current: '.$syncSetting->excel_original_name.')' : '' }}</label>
+            <input type="file" class="form-control" name="sync_file" accept=".xlsx,.xls,.csv">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Interval (min)</label>
+            <input type="number" class="form-control" name="interval_minutes" min="1" max="1440" value="{{ $syncSetting->interval_minutes }}">
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" name="is_enabled" value="1" id="settingsSyncEnabled" {{ $syncSetting->is_enabled ? 'checked' : '' }}>
+              <label class="form-check-label small" for="settingsSyncEnabled">Enable automatic sync</label>
+            </div>
+          </div>
+          <div class="col-12 d-flex gap-2">
+            <button type="submit" class="btn btn-primary-c btn-sm">Save Data Source</button>
+          </div>
+        </form>
+
+        <div class="d-flex flex-wrap gap-3 align-items-center small text-muted-c mt-3 pt-3" style="border-top:1px solid var(--border-color);">
+          @if ($syncSetting->last_synced_at)
+            <span>Last synced <b class="text-reset">{{ $syncSetting->last_synced_at->diffForHumans() }}</b></span>
+            <span class="chip {{ $syncSetting->last_sync_status === 'success' ? 'chip-success' : 'chip-danger' }}">{{ ucfirst($syncSetting->last_sync_status ?? '') }}</span>
+            @if ($syncSetting->last_sync_message)<span>{{ $syncSetting->last_sync_message }}</span>@endif
+          @else
+            <span>Never synced yet</span>
+          @endif
+          <form method="POST" action="{{ route('contacts.sync-now') }}" class="ms-auto">
+            @csrf
+            <button type="submit" class="btn btn-outline-c btn-sm"><i class="bi bi-lightning-charge-fill me-1"></i>Sync Now</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
   {{-- WhatsApp Settings --}}
   <div class="col-lg-6">
     <div class="card-c h-100">
@@ -176,3 +236,17 @@
   </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  function toggleSyncFields() {
+    var type = document.getElementById('settingsSyncSourceType').value;
+    document.getElementById('settingsSyncSheetField').style.display = type === 'google_sheet' ? '' : 'none';
+    document.getElementById('settingsSyncExcelField').style.display = type === 'excel_upload' ? '' : 'none';
+  }
+  var sel = document.getElementById('settingsSyncSourceType');
+  if (sel) { sel.addEventListener('change', toggleSyncFields); toggleSyncFields(); }
+});
+</script>
+@endpush

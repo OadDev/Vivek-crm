@@ -45,7 +45,7 @@
             <th>Code</th>
             <th>
               Product Name
-              <button type="button" class="btn-icon-sq" style="width:22px;height:22px;font-size:11px;" data-bs-toggle="modal" data-bs-target="#modalCopperStandards" title="Standard Copper Reference"><i class="bi bi-info-circle"></i></button>
+              <button type="button" class="btn-icon-sq" style="width:22px;height:22px;font-size:11px;" data-bs-toggle="modal" data-bs-target="#modalReferenceTables" title="Standard Reference Tables"><i class="bi bi-info-circle"></i></button>
             </th>
             <th>Size</th><th>Weight</th><th>Unit</th><th>Rate</th><th>Specification</th><th class="text-end">Actions</th>
           </tr>

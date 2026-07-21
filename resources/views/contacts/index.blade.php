@@ -56,8 +56,8 @@ if (! function_exists('sortLink')) {
         <div class="col-md-4">
           <label class="form-label">Source Type</label>
           <select class="form-select" name="source_type" id="syncSourceType">
-            <option value="excel_upload" {{ $syncSetting->source_type === 'excel_upload' ? 'selected' : '' }}>Uploaded Excel File</option>
             <option value="google_sheet" {{ $syncSetting->source_type === 'google_sheet' ? 'selected' : '' }}>Google Sheet (public link)</option>
+            <option value="excel_upload" {{ $syncSetting->source_type === 'excel_upload' ? 'selected' : '' }}>Uploaded Excel File</option>
           </select>
         </div>
         <div class="col-md-4" id="syncExcelField">

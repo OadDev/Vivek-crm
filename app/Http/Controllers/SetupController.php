@@ -74,7 +74,7 @@ class SetupController extends Controller
                 'role' => 'admin',
             ]);
 
-            Artisan::call('db:seed', ['--class' => 'CopperStandardSeeder', '--force' => true]);
+            Artisan::call('db:seed', ['--class' => 'ReferenceTableSeeder', '--force' => true]);
 
             if ($request->boolean('load_demo_data')) {
                 Artisan::call('db:seed', ['--class' => 'DemoDataSeeder', '--force' => true]);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ContactSyncSetting;
 use App\Models\Setting;
 use App\Models\WhatsappTemplate;
 use Illuminate\Http\Request;
@@ -13,6 +14,7 @@ class SettingsController extends Controller
     public function index()
     {
         $templates = WhatsappTemplate::orderBy('name')->get();
+        $syncSetting = ContactSyncSetting::current();
 
         $settings = [
             'gmail_connected' => Setting::get('gmail_connected', '1') === '1',
@@ -26,7 +28,7 @@ class SettingsController extends Controller
             'timezone' => Setting::get('timezone', 'Asia/Kolkata (IST)'),
         ];
 
-        return view('settings.index', compact('templates', 'settings'));
+        return view('settings.index', compact('templates', 'settings', 'syncSetting'));
     }
 
     public function updateProfile(Request $request)

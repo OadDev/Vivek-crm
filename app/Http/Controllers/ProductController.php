@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\ProductsExport;
 use App\Imports\ProductsImport;
 use App\Models\Activity;
-use App\Models\CopperStandard;
+use App\Models\ReferenceTable;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -30,9 +30,9 @@ class ProductController extends Controller
         }
 
         $products = $query->orderBy('code')->paginate(15)->withQueryString();
-        $copperStandards = CopperStandard::orderBy('sort_order')->get();
+        $referenceTables = ReferenceTable::where('category', 'copper')->orderBy('sort_order')->get();
 
-        return view('products.index', compact('products', 'copperStandards'));
+        return view('products.index', compact('products', 'referenceTables'));
     }
 
     public function store(Request $request)

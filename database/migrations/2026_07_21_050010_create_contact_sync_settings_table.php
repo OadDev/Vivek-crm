@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('contact_sync_settings', function (Blueprint $table) {
             $table->id();
-            $table->enum('source_type', ['excel_upload', 'google_sheet'])->default('excel_upload');
+            $table->enum('source_type', ['excel_upload', 'google_sheet'])->default('google_sheet');
             $table->string('excel_file_path')->nullable();
             $table->string('excel_original_name')->nullable();
             $table->string('google_sheet_url')->nullable();

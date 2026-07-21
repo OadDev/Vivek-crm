@@ -2,10 +2,10 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ContactController;
-use App\Http\Controllers\CopperStandardController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GmailController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ReferenceTableController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SetupController;
 use App\Http\Controllers\WhatsappTemplateController;
@@ -83,11 +83,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/export', [ProductController::class, 'export'])->name('export');
     });
 
-    // Copper standards reference (Product Master popup)
-    Route::prefix('copper-standards')->name('copper-standards.')->group(function () {
-        Route::post('/', [CopperStandardController::class, 'store'])->name('store');
-        Route::put('/{copperStandard}', [CopperStandardController::class, 'update'])->name('update');
-        Route::delete('/{copperStandard}', [CopperStandardController::class, 'destroy'])->name('destroy');
+    // Standard reference tables (Product Master popup)
+    Route::prefix('reference-tables')->name('reference-tables.')->group(function () {
+        Route::post('/', [ReferenceTableController::class, 'store'])->name('store');
+        Route::put('/{referenceTable}', [ReferenceTableController::class, 'update'])->name('update');
+        Route::delete('/{referenceTable}', [ReferenceTableController::class, 'destroy'])->name('destroy');
     });
 
     // Settings
