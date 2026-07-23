@@ -40,8 +40,20 @@ jobs:
             --exclude='/storage/logs/' --exclude='/node_modules/' \
             ./ "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}:${{ secrets.HOSTINGER_DEPLOY_PATH }}"
 
+      # Hostinger's default `php` CLI alias may point at an older version
+      # than the domain's configured PHP-FPM version (they're set
+      # separately in hPanel). Picks the newest 8.2+ binary actually present
+      # instead of assuming `php` resolves correctly.
       - name: Run post-deploy commands
         run: |
           sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no \
             "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}" \
-            "cd ${{ secrets.HOSTINGER_DEPLOY_PATH }} && php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan event:cache && php artisan queue:restart"
+            'cd ${{ secrets.HOSTINGER_DEPLOY_PATH }} && \
+             PHP_BIN=$(command -v php8.4 || command -v php8.3 || command -v php8.2 || command -v php) && \
+             echo "Using $PHP_BIN ($($PHP_BIN -v | head -1))" && \
+             $PHP_BIN artisan migrate --force && \
+             $PHP_BIN artisan config:cache && \
+             $PHP_BIN artisan route:cache && \
+             $PHP_BIN artisan view:cache && \
+             $PHP_BIN artisan event:cache && \
+             $PHP_BIN artisan queue:restart'
