@@ -71,6 +71,8 @@ jobs:
             'cd ${{ secrets.HOSTINGER_DEPLOY_PATH }} && \
              DEPLOY_REAL=$(pwd -P) && \
              PUBLIC_REAL=$(readlink -f "${{ secrets.HOSTINGER_PUBLIC_HTML_PATH }}" 2>/dev/null || echo "${{ secrets.HOSTINGER_PUBLIC_HTML_PATH }}") && \
+             echo "DEPLOY_REAL (masked, shape only): $(printf %s "$DEPLOY_REAL" | sed -E "s/^(.{4}).*(.{10})\$/\\1...\\2/") [len $(printf %s "$DEPLOY_REAL" | wc -c)]" && \
+             echo "PUBLIC_REAL (masked, shape only): $(printf %s "$PUBLIC_REAL" | sed -E "s/^(.{4}).*(.{10})\$/\\1...\\2/") [len $(printf %s "$PUBLIC_REAL" | wc -c)]" && \
              if [ "$DEPLOY_REAL" = "$PUBLIC_REAL" ]; then \
                echo "ERROR: HOSTINGER_DEPLOY_PATH and HOSTINGER_PUBLIC_HTML_PATH resolve to the same directory ($DEPLOY_REAL). Refusing to continue -- fix these two secrets so they point at different paths." >&2; \
                exit 1; \
