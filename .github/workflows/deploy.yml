@@ -40,10 +40,32 @@ jobs:
             --exclude='/storage/logs/' --exclude='/node_modules/' \
             ./ "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}:${{ secrets.HOSTINGER_DEPLOY_PATH }}"
 
+      # Idempotent — safe to run on every deploy. Creates the directories
+      # Laravel needs to write into (excluded from rsync so real data in
+      # them survives deploys) and points Hostinger's public_html at this
+      # app's public/ folder via symlink, since shared hosting often can't
+      # have its document root changed any other way.
+      - name: Ensure server directory layout
+        run: |
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no \
+            "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}" \
+            'cd ${{ secrets.HOSTINGER_DEPLOY_PATH }} && \
+             mkdir -p storage/app/private storage/app/public \
+                      storage/framework/cache/data storage/framework/sessions storage/framework/views \
+                      storage/logs && \
+             chmod -R 775 storage bootstrap/cache && \
+             rm -rf "${{ secrets.HOSTINGER_PUBLIC_HTML_PATH }}" && \
+             ln -sfn "${{ secrets.HOSTINGER_DEPLOY_PATH }}/public" "${{ secrets.HOSTINGER_PUBLIC_HTML_PATH }}"'
+
       # Hostinger's default `php` CLI alias may point at an older version
       # than the domain's configured PHP-FPM version (they're set
       # separately in hPanel). Picks the newest 8.2+ binary actually present
       # instead of assuming `php` resolves correctly.
+      #
+      # Skips migrate/cache until storage/app/installed.lock exists — that
+      # file is only created by the Setup Wizard (/setup) once .env and the
+      # database actually exist, so running these before that would just
+      # fail on every deploy until setup is done.
       - name: Run post-deploy commands
         run: |
           sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no \
@@ -51,9 +73,13 @@ jobs:
             'cd ${{ secrets.HOSTINGER_DEPLOY_PATH }} && \
              PHP_BIN=$(command -v php8.4 || command -v php8.3 || command -v php8.2 || command -v php) && \
              echo "Using $PHP_BIN ($($PHP_BIN -v | head -1))" && \
-             $PHP_BIN artisan migrate --force && \
-             $PHP_BIN artisan config:cache && \
-             $PHP_BIN artisan route:cache && \
-             $PHP_BIN artisan view:cache && \
-             $PHP_BIN artisan event:cache && \
-             $PHP_BIN artisan queue:restart'
+             if [ -f storage/app/installed.lock ]; then \
+               $PHP_BIN artisan migrate --force && \
+               $PHP_BIN artisan config:cache && \
+               $PHP_BIN artisan route:cache && \
+               $PHP_BIN artisan view:cache && \
+               $PHP_BIN artisan event:cache && \
+               $PHP_BIN artisan queue:restart; \
+             else \
+               echo "App not installed yet — visit /setup to finish installation. Skipping migrate/cache for now."; \
+             fi'
