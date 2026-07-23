@@ -25,6 +25,25 @@ jobs:
       - name: Install sshpass
         run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
 
+      # If HOSTINGER_DEPLOY_PATH and HOSTINGER_PUBLIC_HTML_PATH ever resolve
+      # to the same location, a previous "Ensure server directory layout"
+      # step can turn the deploy path into a symlink pointing at its own
+      # public/ subfolder -- a self-referencing loop ("Too many levels of
+      # symbolic links") that also deletes the app files that were rsynced
+      # there. Detect and repair that before rsync runs, so a bad symlink
+      # left over from a previous run doesn't break every deploy after it.
+      - name: Pre-flight — repair deploy path if it became a symlink
+        run: |
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no \
+            "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}" \
+            'DEPLOY_PATH="${{ secrets.HOSTINGER_DEPLOY_PATH }}"; \
+             DEPLOY_PATH="${DEPLOY_PATH%/}"; \
+             if [ -L "$DEPLOY_PATH" ]; then \
+               echo "Deploy path is a symlink (likely a leftover loop) -- removing it so it can be recreated as a real directory"; \
+               rm -f "$DEPLOY_PATH"; \
+             fi; \
+             mkdir -p "$DEPLOY_PATH"'
+
       # Ships vendor/ (built here, not on the shared-hosting box) to the
       # server via rsync over SSH. Anything not listed here is left alone on
       # the server — .env, uploaded files, session/cache/log contents, and
@@ -50,6 +69,12 @@ jobs:
           sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no \
             "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}" \
             'cd ${{ secrets.HOSTINGER_DEPLOY_PATH }} && \
+             DEPLOY_REAL=$(pwd -P) && \
+             PUBLIC_REAL=$(readlink -f "${{ secrets.HOSTINGER_PUBLIC_HTML_PATH }}" 2>/dev/null || echo "${{ secrets.HOSTINGER_PUBLIC_HTML_PATH }}") && \
+             if [ "$DEPLOY_REAL" = "$PUBLIC_REAL" ]; then \
+               echo "ERROR: HOSTINGER_DEPLOY_PATH and HOSTINGER_PUBLIC_HTML_PATH resolve to the same directory ($DEPLOY_REAL). Refusing to continue -- fix these two secrets so they point at different paths." >&2; \
+               exit 1; \
+             fi && \
              mkdir -p storage/app/private storage/app/public \
                       storage/framework/cache/data storage/framework/sessions storage/framework/views \
                       storage/logs && \
