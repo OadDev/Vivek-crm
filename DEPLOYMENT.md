@@ -16,70 +16,61 @@ account-specific is a GitHub Actions secret you set up yourself, once.
 
 Do this in hPanel and over SSH, before the first deploy.
 
-**a. Confirm SSH access and get your connection details**
-hPanel → Advanced → SSH Access. Note the hostname, port (usually `65002`
-on Hostinger shared hosting), and username.
+**a. SSH connection details** (hPanel → Advanced → SSH Access):
 
-**b. Generate a deploy keypair** (on your own machine, not on Hostinger):
+| | Value |
+|---|---|
+| IP | `217.21.81.23` |
+| Port | `65002` |
+| Username | `u476218181` |
+| Password | whatever's set under "Password → Change" on that page |
 
-```bash
-ssh-keygen -t ed25519 -C "github-actions-deploy" -f hostinger_deploy_key -N ""
-```
+This deploy uses password auth (simpler to set up than an SSH key, at the
+cost of your actual Hostinger account password living in GitHub Secrets —
+see the note in step 2). No public key needs adding anywhere.
 
-This makes two files: `hostinger_deploy_key` (private) and
-`hostinger_deploy_key.pub` (public).
-
-**c. Add the public key to Hostinger.** Either paste the contents of
-`hostinger_deploy_key.pub` into hPanel's SSH Access → Manage SSH Keys, or
-SSH in with your normal credentials once and run:
-
-```bash
-mkdir -p ~/.ssh && chmod 700 ~/.ssh
-echo "PASTE_PUBLIC_KEY_CONTENTS_HERE" >> ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
-```
-
-**d. Pick where the app lives**, e.g. `~/laravel-app` (outside
+**b. Pick where the app lives**: `/home/u476218181/laravel-app` (outside
 `public_html` — Laravel's `app/`, `config/`, `.env` etc. must never be
 web-accessible). Create it:
 
 ```bash
-mkdir -p ~/laravel-app
+mkdir -p /home/u476218181/laravel-app
 ```
 
-**e. Point your domain's document root at `laravel-app/public`.** In
-hPanel → Websites → (your domain) → look for a "Document root" / website
-folder setting and point it at `laravel-app/public`. If your plan doesn't
-allow changing the document root, use this fallback instead:
+**c. Point `lightskyblue-snail-995478.hostingersite.com`'s document root at
+`laravel-app/public`.** In hPanel → Websites → that site → look for a
+"Document root" / website folder setting. If your plan doesn't allow
+changing it, use this fallback instead:
 
 ```bash
-rm -rf ~/domains/yourdomain.com/public_html
-ln -s ~/laravel-app/public ~/domains/yourdomain.com/public_html
+rm -rf /home/u476218181/public_html
+ln -s /home/u476218181/laravel-app/public /home/u476218181/public_html
 ```
 
-**f. Seed the directories the deploy step deliberately never touches**
+**d. Seed the directories the deploy step deliberately never touches**
 (so `.env`, uploads, and sessions survive every future deploy):
 
 ```bash
-cd ~/laravel-app
+cd /home/u476218181/laravel-app
 mkdir -p storage/app/private storage/app/public
 mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views
 mkdir -p storage/logs
 chmod -R 775 storage bootstrap/cache
 ```
 
-**g. Create the MySQL database** in hPanel → Databases → MySQL Databases.
+**e. Create the MySQL database** in hPanel → Databases → MySQL Databases.
 Note the database name, username, and password (Hostinger MySQL host is
 usually `localhost` from within the same account).
 
-**h. Create `~/laravel-app/.env` by hand, once**, with at minimum:
+**f. Create `/home/u476218181/laravel-app/.env` by hand, once**, with at
+minimum:
 
 ```
 APP_NAME="Vivek Jain CRM"
 APP_ENV=production
 APP_KEY=
 APP_DEBUG=false
-APP_URL=https://yourdomain.com
+APP_URL=https://lightskyblue-snail-995478.hostingersite.com
 APP_TIMEZONE=Asia/Kolkata
 
 DB_CONNECTION=mysql
@@ -95,19 +86,19 @@ QUEUE_CONNECTION=sync
 ```
 
 Then generate the app key once: `php artisan key:generate` (run from
-`~/laravel-app` over SSH — check `php -v` first; if it's not 8.2+, use
+`laravel-app` over SSH — check `php -v` first; if it's not 8.2+, use
 hPanel's PHP version selector for this domain, and you may need to invoke
 `php8.2` explicitly instead of `php` in these commands).
 
-> You will **not** need to visit `/setup` on this server — steps g/h above
+> You will **not** need to visit `/setup` on this server — steps e/f above
 > do what the Setup Wizard does, so `EnsureAppIsInstalled` needs a marker
 > file too: `touch storage/app/installed.lock`.
 
-**i. Add the cron job** that drives the follow-up automation and
+**g. Add the cron job** that drives the follow-up automation and
 Excel/Sheets sync. hPanel → Advanced → Cron Jobs:
 
 ```
-* * * * * php /home/YOUR_USERNAME/laravel-app/artisan schedule:run >> /dev/null 2>&1
+* * * * * php /home/u476218181/laravel-app/artisan schedule:run >> /dev/null 2>&1
 ```
 
 ## 2. One-time GitHub setup
@@ -117,14 +108,17 @@ Add all of these:
 
 | Secret | Value |
 |---|---|
-| `HOSTINGER_HOST` | SSH hostname from hPanel (e.g. `srv123.hostinger.com`) |
-| `HOSTINGER_PORT` | SSH port from hPanel (e.g. `65002`) |
-| `HOSTINGER_USERNAME` | SSH username from hPanel |
-| `HOSTINGER_SSH_KEY` | Full contents of `hostinger_deploy_key` (the **private** key file) |
-| `HOSTINGER_DEPLOY_PATH` | Absolute path to the app, e.g. `/home/username/laravel-app/` (trailing slash matters for rsync) |
+| `HOSTINGER_HOST` | `217.21.81.23` |
+| `HOSTINGER_PORT` | `65002` |
+| `HOSTINGER_USERNAME` | `u476218181` |
+| `HOSTINGER_PASSWORD` | Your Hostinger SSH password (hPanel → SSH Access → Password → Change, if you need to (re)set it) |
+| `HOSTINGER_DEPLOY_PATH` | `/home/u476218181/laravel-app/` (trailing slash matters for rsync) |
 
-Delete the local `hostinger_deploy_key` / `.pub` files once they're saved
-as a secret — you won't need them again.
+Using a password instead of an SSH key is simpler to wire up, but it means
+this exact password — your real Hostinger login — lives in GitHub Secrets.
+If you'd rather scope this down to a revocable deploy-only credential
+later, switching back to key-based auth just means changing this workflow
+back; nothing else about the setup changes.
 
 ## 3. Going forward
 

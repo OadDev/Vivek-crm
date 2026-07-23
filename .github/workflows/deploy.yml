@@ -22,34 +22,26 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
 
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
       # Ships vendor/ (built here, not on the shared-hosting box) to the
       # server via rsync over SSH. Anything not listed here is left alone on
       # the server — .env, uploaded files, session/cache/log contents, and
       # storage/app/installed.lock all persist across deploys untouched.
       - name: Deploy via rsync over SSH
-        uses: easingthemes/ssh-deploy@v5
-        with:
-          SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
-          REMOTE_HOST: ${{ secrets.HOSTINGER_HOST }}
-          REMOTE_PORT: ${{ secrets.HOSTINGER_PORT }}
-          REMOTE_USER: ${{ secrets.HOSTINGER_USERNAME }}
-          TARGET: ${{ secrets.HOSTINGER_DEPLOY_PATH }}
-          ARGS: '-rltzv --delete'
-          EXCLUDE: '/.git/, /.github/, /tests/, /.env, /.env.example, /storage/app/, /storage/framework/cache/, /storage/framework/sessions/, /storage/framework/views/, /storage/logs/, /node_modules/'
+        run: |
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" rsync -rltzv --delete \
+            -e "ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no" \
+            --exclude='/.git/' --exclude='/.github/' --exclude='/tests/' \
+            --exclude='/.env' --exclude='/.env.example' \
+            --exclude='/storage/app/' --exclude='/storage/framework/cache/' \
+            --exclude='/storage/framework/sessions/' --exclude='/storage/framework/views/' \
+            --exclude='/storage/logs/' --exclude='/node_modules/' \
+            ./ "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}:${{ secrets.HOSTINGER_DEPLOY_PATH }}"
 
       - name: Run post-deploy commands
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.HOSTINGER_HOST }}
-          port: ${{ secrets.HOSTINGER_PORT }}
-          username: ${{ secrets.HOSTINGER_USERNAME }}
-          key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          script: |
-            set -e
-            cd ${{ secrets.HOSTINGER_DEPLOY_PATH }}
-            php artisan migrate --force
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
-            php artisan event:cache
-            php artisan queue:restart
+        run: |
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no \
+            "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}" \
+            "cd ${{ secrets.HOSTINGER_DEPLOY_PATH }} && php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan event:cache && php artisan queue:restart"
