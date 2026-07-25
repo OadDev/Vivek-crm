@@ -142,3 +142,19 @@ jobs:
              else \
                echo "App not installed yet — visit /setup to finish installation. Skipping migrate/cache for now."; \
              fi'
+
+      # Read-only. The live site is 500ing and we have no direct SSH access
+      # to inspect why -- print the actual Laravel error (and confirm which
+      # PHP version PHP-FPM is really running, which is configured
+      # separately from the CLI binary and may still be < 8.2 even though
+      # the CLI steps above now succeed) so the next fix is based on the
+      # real error instead of another guess.
+      - name: Diagnose current error
+        run: |
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no \
+            "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}" \
+            'cd ${{ secrets.HOSTINGER_DEPLOY_PATH }} && \
+             echo "--- .env exists? ---" && ls -la .env 2>&1 && \
+             echo "--- last 80 lines of storage/logs/laravel.log ---" && \
+             (tail -n 80 storage/logs/laravel.log 2>&1 || echo "(no laravel.log)") && \
+             echo "--- storage/bootstrap perms ---" && ls -la storage bootstrap/cache 2>&1'
