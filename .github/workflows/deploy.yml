@@ -84,6 +84,28 @@ jobs:
              rm -rf "${{ secrets.HOSTINGER_PUBLIC_HTML_PATH }}" && \
              ln -sfn "${{ secrets.HOSTINGER_DEPLOY_PATH }}/public" "${{ secrets.HOSTINGER_PUBLIC_HTML_PATH }}"'
 
+      # .env is deliberately excluded from rsync (so a real, populated one
+      # never gets clobbered by a deploy) -- but that also means a brand
+      # new deploy path has no .env at all, and Laravel 500s immediately
+      # (no APP_KEY -> cookie/session encryption fails) before the Setup
+      # Wizard ever gets a chance to run. Bootstrap one from .env.example
+      # the first time only; once a real .env exists here, this is a no-op
+      # forever after.
+      - name: Bootstrap .env on first deploy
+        run: |
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no \
+            "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}" \
+            'cd ${{ secrets.HOSTINGER_DEPLOY_PATH }} && \
+             PHP_BIN=$(command -v php8.4 || command -v php8.3 || command -v php8.2 || command -v php) && \
+             if [ ! -f .env ]; then \
+               echo "No .env found -- bootstrapping one from .env.example" && \
+               cp .env.example .env && \
+               sed -i "s#^APP_URL=.*#APP_URL=https://lightskyblue-snail-995478.hostingersite.com#" .env && \
+               $PHP_BIN artisan key:generate --force; \
+             else \
+               echo ".env already exists -- leaving it alone"; \
+             fi'
+
       # Hostinger's default `php` CLI alias may point at an older version
       # than the domain's configured PHP-FPM version (they're set
       # separately in hPanel). Picks the newest 8.2+ binary actually present
