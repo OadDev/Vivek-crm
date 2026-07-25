@@ -96,7 +96,17 @@ jobs:
           sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no \
             "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}" \
             'cd ${{ secrets.HOSTINGER_DEPLOY_PATH }} && \
-             PHP_BIN=$(command -v php8.4 || command -v php8.3 || command -v php8.2 || command -v php) && \
+             PHP_BIN=""; \
+             for c in php8.4 php8.3 php8.2 php82 php8_2; do p=$(command -v "$c" 2>/dev/null) && PHP_BIN="$p" && break; done; \
+             if [ -z "$PHP_BIN" ]; then \
+               for p in /opt/alt/php82/usr/bin/php /opt/cpanel/ea-php82/root/usr/bin/php /usr/local/bin/php8.2 /usr/local/php82/bin/php /usr/bin/php8.2; do \
+                 [ -x "$p" ] && PHP_BIN="$p" && break; \
+               done; \
+             fi; \
+             [ -z "$PHP_BIN" ] && PHP_BIN=$(command -v php); \
+             echo "Resolved PHP_BIN=$PHP_BIN -- $($PHP_BIN -v | head -1)" && \
+             echo "--- php-ish commands on PATH ---" && (compgen -c 2>/dev/null | grep -i "^php" | sort -u || true) && \
+             echo "--- php binaries in common dirs ---" && (ls -la /usr/bin/php* /usr/local/bin/php* /opt/*/bin/php* /opt/*/*/bin/php* 2>/dev/null || true) && \
              if [ ! -f .env ]; then \
                echo "No .env found -- bootstrapping one from .env.example" && \
                cp .env.example .env && \
