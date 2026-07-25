@@ -53,7 +53,7 @@ jobs:
           sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" rsync -rltzv --delete \
             -e "ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no" \
             --exclude='/.git/' --exclude='/.github/' --exclude='/tests/' \
-            --exclude='/.env' --exclude='/.env.example' \
+            --exclude='/.env' \
             --exclude='/storage/app/' --exclude='/storage/framework/cache/' \
             --exclude='/storage/framework/sessions/' --exclude='/storage/framework/views/' \
             --exclude='/storage/logs/' --exclude='/node_modules/' \
