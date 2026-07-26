@@ -110,11 +110,11 @@ jobs:
              if [ ! -f .env ]; then \
                echo "No .env found -- bootstrapping one from .env.example" && \
                cp .env.example .env && \
-               sed -i "s#^APP_URL=.*#APP_URL=https://lightskyblue-snail-995478.hostingersite.com#" .env && \
                $PHP_BIN artisan key:generate --force; \
              else \
                echo ".env already exists -- leaving it alone"; \
-             fi'
+             fi && \
+             sed -i "s#^APP_URL=.*#APP_URL=https://green-lark-564337.hostingersite.com#" .env'
 
       # Hostinger's default `php` CLI alias may point at an older version
       # than the domain's configured PHP-FPM version (they're set

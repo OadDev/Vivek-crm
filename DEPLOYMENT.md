@@ -23,7 +23,7 @@ couple of things below still need you specifically.
 ## 1. Things only you can do (hPanel UI, not automatable)
 
 **a. Bump PHP to 8.2+** — hPanel → Advanced → PHP Configuration → select
-8.2 or newer for `lightskyblue-snail-995478.hostingersite.com`. This
+8.2 or newer for `green-lark-564337.hostingersite.com`. This
 account defaulted to PHP 8.1.34, which Laravel 11 can't run on.
 
 **b. Create the MySQL database** — hPanel → Databases → MySQL Databases.
@@ -46,7 +46,7 @@ before switching to a versioned binary path.)
 - Creates `/home/u476218181/laravel-app` and rsyncs the built app into it.
 - Creates `storage/app/{private,public}`, `storage/framework/{cache/data,sessions,views}`,
   `storage/logs`, and `chmod 775`s them.
-- Replaces `/home/u476218181/domains/lightskyblue-snail-995478.hostingersite.com/public_html`
+- Replaces `/home/u476218181/domains/green-lark-564337.hostingersite.com/public_html`
   with a symlink to `laravel-app/public`, so the domain actually serves
   this app instead of Hostinger's placeholder page.
 
@@ -57,7 +57,7 @@ You don't need to run any of this by hand or over SSH yourself.
 Once 1a and 1b above are done (PHP bumped, database created) and at least
 one deploy has run (so the symlink from step 2 exists), visit:
 
-**https://lightskyblue-snail-995478.hostingersite.com/setup**
+**https://green-lark-564337.hostingersite.com/setup**
 
 Enter the MySQL credentials from step 1b, then create your admin account.
 This writes `.env`, runs migrations, and creates
@@ -76,7 +76,7 @@ Add all of these:
 | `HOSTINGER_USERNAME` | `u476218181` |
 | `HOSTINGER_PASSWORD` | Your Hostinger SSH password (hPanel → SSH Access → Password → Change, if you need to (re)set it) |
 | `HOSTINGER_DEPLOY_PATH` | `/home/u476218181/laravel-app/` (trailing slash matters for rsync) |
-| `HOSTINGER_PUBLIC_HTML_PATH` | `/home/u476218181/domains/lightskyblue-snail-995478.hostingersite.com/public_html` (no trailing slash — this gets replaced with a symlink) |
+| `HOSTINGER_PUBLIC_HTML_PATH` | `/home/u476218181/domains/green-lark-564337.hostingersite.com/public_html` (no trailing slash — this gets replaced with a symlink) |
 
 Using a password instead of an SSH key is simpler to wire up, but it means
 this exact password — your real Hostinger login — lives in GitHub Secrets.
