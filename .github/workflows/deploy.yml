@@ -1,0 +1,160 @@
+name: Deploy to Hostinger
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, zip, bcmath
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
+
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      # If HOSTINGER_DEPLOY_PATH and HOSTINGER_PUBLIC_HTML_PATH ever resolve
+      # to the same location, a previous "Ensure server directory layout"
+      # step can turn the deploy path into a symlink pointing at its own
+      # public/ subfolder -- a self-referencing loop ("Too many levels of
+      # symbolic links") that also deletes the app files that were rsynced
+      # there. Detect and repair that before rsync runs, so a bad symlink
+      # left over from a previous run doesn't break every deploy after it.
+      - name: Pre-flight — repair deploy path if it became a symlink
+        run: |
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no \
+            "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}" \
+            'DEPLOY_PATH="${{ secrets.HOSTINGER_DEPLOY_PATH }}"; \
+             DEPLOY_PATH="${DEPLOY_PATH%/}"; \
+             if [ -L "$DEPLOY_PATH" ]; then \
+               echo "Deploy path is a symlink (likely a leftover loop) -- removing it so it can be recreated as a real directory"; \
+               rm -f "$DEPLOY_PATH"; \
+             fi; \
+             mkdir -p "$DEPLOY_PATH"'
+
+      # Ships vendor/ (built here, not on the shared-hosting box) to the
+      # server via rsync over SSH. Anything not listed here is left alone on
+      # the server — .env, uploaded files, session/cache/log contents, and
+      # storage/app/installed.lock all persist across deploys untouched.
+      - name: Deploy via rsync over SSH
+        run: |
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" rsync -rltzv --delete \
+            -e "ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no" \
+            --exclude='/.git/' --exclude='/.github/' --exclude='/tests/' \
+            --exclude='/.env' \
+            --exclude='/storage/app/' --exclude='/storage/framework/cache/' \
+            --exclude='/storage/framework/sessions/' --exclude='/storage/framework/views/' \
+            --exclude='/storage/logs/' --exclude='/node_modules/' \
+            ./ "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}:${{ secrets.HOSTINGER_DEPLOY_PATH }}"
+
+      # Idempotent — safe to run on every deploy. Creates the directories
+      # Laravel needs to write into (excluded from rsync so real data in
+      # them survives deploys) and points Hostinger's public_html at this
+      # app's public/ folder via symlink, since shared hosting often can't
+      # have its document root changed any other way.
+      - name: Ensure server directory layout
+        run: |
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no \
+            "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}" \
+            'cd ${{ secrets.HOSTINGER_DEPLOY_PATH }} && \
+             DEPLOY_REAL=$(pwd -P) && \
+             PUBLIC_REAL=$(readlink -f "${{ secrets.HOSTINGER_PUBLIC_HTML_PATH }}" 2>/dev/null || echo "${{ secrets.HOSTINGER_PUBLIC_HTML_PATH }}") && \
+             echo "DEPLOY_REAL (masked, shape only): $(printf %s "$DEPLOY_REAL" | sed -E "s/^(.{4}).*(.{10})\$/\\1...\\2/") [len $(printf %s "$DEPLOY_REAL" | wc -c)]" && \
+             echo "PUBLIC_REAL (masked, shape only): $(printf %s "$PUBLIC_REAL" | sed -E "s/^(.{4}).*(.{10})\$/\\1...\\2/") [len $(printf %s "$PUBLIC_REAL" | wc -c)]" && \
+             if [ "$DEPLOY_REAL" = "$PUBLIC_REAL" ]; then \
+               echo "ERROR: HOSTINGER_DEPLOY_PATH and HOSTINGER_PUBLIC_HTML_PATH resolve to the same directory ($DEPLOY_REAL). Refusing to continue -- fix these two secrets so they point at different paths." >&2; \
+               exit 1; \
+             fi && \
+             mkdir -p storage/app/private storage/app/public \
+                      storage/framework/cache/data storage/framework/sessions storage/framework/views \
+                      storage/logs && \
+             chmod -R 775 storage bootstrap/cache && \
+             rm -rf "${{ secrets.HOSTINGER_PUBLIC_HTML_PATH }}" && \
+             ln -sfn "${{ secrets.HOSTINGER_DEPLOY_PATH }}/public" "${{ secrets.HOSTINGER_PUBLIC_HTML_PATH }}"'
+
+      # .env is deliberately excluded from rsync (so a real, populated one
+      # never gets clobbered by a deploy) -- but that also means a brand
+      # new deploy path has no .env at all, and Laravel 500s immediately
+      # (no APP_KEY -> cookie/session encryption fails) before the Setup
+      # Wizard ever gets a chance to run. Bootstrap one from .env.example
+      # the first time only; once a real .env exists here, this is a no-op
+      # forever after.
+      - name: Bootstrap .env on first deploy
+        run: |
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no \
+            "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}" \
+            'cd ${{ secrets.HOSTINGER_DEPLOY_PATH }} && \
+             PHP_BIN=""; \
+             for c in php8.4 php8.3 php8.2 php82 php8_2; do p=$(command -v "$c" 2>/dev/null) && PHP_BIN="$p" && break; done; \
+             if [ -z "$PHP_BIN" ]; then \
+               for p in /opt/alt/php82/usr/bin/php /opt/cpanel/ea-php82/root/usr/bin/php /usr/local/bin/php8.2 /usr/local/php82/bin/php /usr/bin/php8.2; do \
+                 [ -x "$p" ] && PHP_BIN="$p" && break; \
+               done; \
+             fi; \
+             [ -z "$PHP_BIN" ] && PHP_BIN=$(command -v php); \
+             echo "Resolved PHP_BIN=$PHP_BIN -- $($PHP_BIN -v | head -1)" && \
+             echo "--- php-ish commands on PATH ---" && (compgen -c 2>/dev/null | grep -i "^php" | sort -u || true) && \
+             echo "--- php binaries in common dirs ---" && (ls -la /usr/bin/php* /usr/local/bin/php* /opt/*/bin/php* /opt/*/*/bin/php* 2>/dev/null || true) && \
+             if [ ! -f .env ]; then \
+               echo "No .env found -- bootstrapping one from .env.example" && \
+               cp .env.example .env && \
+               $PHP_BIN artisan key:generate --force; \
+             else \
+               echo ".env already exists -- leaving it alone"; \
+             fi && \
+             sed -i "s#^APP_URL=.*#APP_URL=https://green-lark-564337.hostingersite.com#" .env'
+
+      # Hostinger's default `php` CLI alias may point at an older version
+      # than the domain's configured PHP-FPM version (they're set
+      # separately in hPanel). Picks the newest 8.2+ binary actually present
+      # instead of assuming `php` resolves correctly.
+      #
+      # Skips migrate/cache until storage/app/installed.lock exists — that
+      # file is only created by the Setup Wizard (/setup) once .env and the
+      # database actually exist, so running these before that would just
+      # fail on every deploy until setup is done.
+      - name: Run post-deploy commands
+        run: |
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no \
+            "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}" \
+            'cd ${{ secrets.HOSTINGER_DEPLOY_PATH }} && \
+             PHP_BIN=$(command -v php8.4 || command -v php8.3 || command -v php8.2 || command -v php) && \
+             echo "Using $PHP_BIN ($($PHP_BIN -v | head -1))" && \
+             if [ -f storage/app/installed.lock ]; then \
+               $PHP_BIN artisan migrate --force && \
+               $PHP_BIN artisan config:cache && \
+               $PHP_BIN artisan route:cache && \
+               $PHP_BIN artisan view:cache && \
+               $PHP_BIN artisan event:cache && \
+               $PHP_BIN artisan queue:restart; \
+             else \
+               echo "App not installed yet — visit /setup to finish installation. Skipping migrate/cache for now."; \
+             fi'
+
+      # Read-only. The live site is 500ing and we have no direct SSH access
+      # to inspect why -- print the actual Laravel error (and confirm which
+      # PHP version PHP-FPM is really running, which is configured
+      # separately from the CLI binary and may still be < 8.2 even though
+      # the CLI steps above now succeed) so the next fix is based on the
+      # real error instead of another guess.
+      - name: Diagnose current error
+        run: |
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no \
+            "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}" \
+            'cd ${{ secrets.HOSTINGER_DEPLOY_PATH }} && \
+             echo "--- .env exists? ---" && ls -la .env 2>&1 && \
+             echo "--- last 80 lines of storage/logs/laravel.log ---" && \
+             (tail -n 80 storage/logs/laravel.log 2>&1 || echo "(no laravel.log)") && \
+             echo "--- storage/bootstrap perms ---" && ls -la storage bootstrap/cache 2>&1'

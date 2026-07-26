@@ -10,6 +10,12 @@ Setup Wizard for database configuration.
 - Composer
 - MySQL 8.x (or MariaDB)
 
+## Deployment
+
+Pushes to `main` auto-deploy to Hostinger via GitHub Actions. See
+[DEPLOYMENT.md](DEPLOYMENT.md) for the one-time setup (SSH keys, server
+paths, GitHub secrets) and how the pipeline works.
+
 ## Installation
 
 ```bash
