@@ -158,3 +158,14 @@ jobs:
              echo "--- last 80 lines of storage/logs/laravel.log ---" && \
              (tail -n 80 storage/logs/laravel.log 2>&1 || echo "(no laravel.log)") && \
              echo "--- storage/bootstrap perms ---" && ls -la storage bootstrap/cache 2>&1'
+
+      # Hits the temporary public/_diag.php probe directly over HTTP from the
+      # runner. This tells us whether PHP-FPM can even traverse the
+      # public_html -> laravel-app symlink at all -- shared hosting often
+      # scopes open_basedir to the domain's own folder, which would silently
+      # block exactly this and explain a 500 that persists despite .env/
+      # APP_KEY/permissions all checking out over SSH.
+      - name: Probe live site over HTTP
+        run: |
+          echo "--- curl https://green-lark-564337.hostingersite.com/_diag.php ---"
+          curl -sS -i https://green-lark-564337.hostingersite.com/_diag.php || true
