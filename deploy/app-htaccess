@@ -1,0 +1,10 @@
+# Deployed as DEPLOY_PATH/app/.htaccess. This directory holds the actual
+# application code (vendor/, .env, app/, etc.) -- it sits under the same
+# webroot as public_html only because this hosting plan has no way to place
+# it outside the document root, so direct HTTP access must be blocked here.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Deny from all
+</IfModule>

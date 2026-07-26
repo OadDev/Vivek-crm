@@ -5,26 +5,39 @@ Every push to `main` triggers `.github/workflows/deploy.yml`, which:
 1. Builds the app (Composer, production dependencies) on GitHub's runner —
    **not** on the shared-hosting box, since Hostinger shared plans are too
    resource-constrained to reliably run `composer install` themselves.
-2. Rsyncs the built app to your Hostinger account over SSH.
-3. SSHes in again to create the storage directories and symlink
-   `public_html` at this app's `public/` folder (idempotent — safe on
-   every deploy).
-4. SSHes in a third time to run `migrate`, cache-warm the config/routes/
-   views, and restart the queue — but only once `storage/app/installed.lock`
-   exists, i.e. only after you've completed the Setup Wizard below. Before
-   that, this step just prints a reminder and exits successfully.
+2. Rsyncs the app code (vendor, app, bootstrap, config, etc.) into
+   `DEPLOY_PATH/app/` over SSH — a subfolder *inside* your public_html, not a
+   sibling directory. This hosting plan has no way to point the document
+   root somewhere else or reliably follow a symlink out of it (shared-hosting
+   PHP-FPM sandboxing tends to block that silently), so everything has to
+   live under the one folder Hostinger actually serves.
+3. Rsyncs `public/`'s contents (CSS/JS/images, `.htaccess`, favicon,
+   robots.txt) directly into `DEPLOY_PATH` itself, and deploys a modified
+   `index.php` (`deploy/hostinger-index.php`) that points into `app/` instead
+   of the stock `../vendor`, `../bootstrap` paths.
+4. Deploys `app/.htaccess` (`Require all denied`) so `DEPLOY_PATH/app/` —
+   which holds `.env`, `vendor/`, everything — is never directly reachable
+   over HTTP, even though it's nested under the same webroot as `index.php`.
+5. Creates the storage directories Laravel needs to write into, and
+   bootstraps `.env` from `.env.example` the first time only (subsequent
+   deploys leave a real `.env` alone).
+6. Runs `migrate`, cache-warms config/routes/views, and restarts the queue —
+   but only once `storage/app/installed.lock` exists, i.e. only after you've
+   completed the Setup Wizard below. Before that, this step just prints a
+   reminder and exits successfully.
 
 None of your credentials live in this repo or in chat — everything
 account-specific is a GitHub Actions secret you set up yourself, once.
-The pipeline can create directories and symlinks for you (it already has
-SSH access via those secrets), but it can't touch hPanel's own UI — so a
-couple of things below still need you specifically.
 
 ## 1. Things only you can do (hPanel UI, not automatable)
 
 **a. Bump PHP to 8.2+** — hPanel → Advanced → PHP Configuration → select
-8.2 or newer for `green-lark-564337.hostingersite.com`. This
-account defaulted to PHP 8.1.34, which Laravel 11 can't run on.
+8.2 or newer for your domain. Hostinger accounts commonly default to an
+older PHP version, which Laravel 11 can't run on. (The pipeline's SSH
+commands separately hunt for a versioned 8.2+ CLI binary since the CLI
+alias and the web-facing PHP-FPM version are configured independently —
+but the actual page requests still go through whatever PHP-FPM version is
+set here, so this step matters regardless.)
 
 **b. Create the MySQL database** — hPanel → Databases → MySQL Databases.
 Note the database name, username, and password; you'll type these into
@@ -34,30 +47,30 @@ the Setup Wizard (next section), not into a file.
 Excel/Sheets sync — hPanel → Advanced → Cron Jobs:
 
 ```
-* * * * * php /home/u476218181/laravel-app/artisan schedule:run >> /dev/null 2>&1
+* * * * * php /path/to/your/public_html/app/artisan schedule:run >> /dev/null 2>&1
 ```
 
 (If the bare `php` there turns out to be the wrong version too, hPanel's
 Cron Jobs form sometimes has its own PHP-version dropdown — check that
 before switching to a versioned binary path.)
 
-## 2. Things the pipeline now does for you automatically
+## 2. Things the pipeline does for you automatically
 
-- Creates `/home/u476218181/laravel-app` and rsyncs the built app into it.
+- Rsyncs the app into `DEPLOY_PATH/app/` and the built public assets +
+  front controller into `DEPLOY_PATH` itself.
+- Locks down `DEPLOY_PATH/app/` from direct web access.
 - Creates `storage/app/{private,public}`, `storage/framework/{cache/data,sessions,views}`,
   `storage/logs`, and `chmod 775`s them.
-- Replaces `/home/u476218181/domains/green-lark-564337.hostingersite.com/public_html`
-  with a symlink to `laravel-app/public`, so the domain actually serves
-  this app instead of Hostinger's placeholder page.
+- Bootstraps `.env` (and `APP_KEY`) the first time there isn't one.
 
 You don't need to run any of this by hand or over SSH yourself.
 
 ## 3. Finish install via the Setup Wizard
 
 Once 1a and 1b above are done (PHP bumped, database created) and at least
-one deploy has run (so the symlink from step 2 exists), visit:
+one deploy has run, visit:
 
-**https://green-lark-564337.hostingersite.com/setup**
+**https://your-domain.example/setup**
 
 Enter the MySQL credentials from step 1b, then create your admin account.
 This writes `.env`, runs migrations, and creates
@@ -71,25 +84,24 @@ Add all of these:
 
 | Secret | Value |
 |---|---|
-| `HOSTINGER_HOST` | `217.21.81.23` |
-| `HOSTINGER_PORT` | `65002` |
-| `HOSTINGER_USERNAME` | `u476218181` |
-| `HOSTINGER_PASSWORD` | Your Hostinger SSH password (hPanel → SSH Access → Password → Change, if you need to (re)set it) |
-| `HOSTINGER_DEPLOY_PATH` | `/home/u476218181/laravel-app/` (trailing slash matters for rsync) |
-| `HOSTINGER_PUBLIC_HTML_PATH` | `/home/u476218181/domains/green-lark-564337.hostingersite.com/public_html` (no trailing slash — this gets replaced with a symlink) |
+| `SSH_HOST` | Your Hostinger SSH host/IP (hPanel → SSH Access) |
+| `SSH_PORT` | Your Hostinger SSH port (hPanel → SSH Access) |
+| `SSH_USERNAME` | Your Hostinger SSH username (hPanel → SSH Access) |
+| `SSH_PASSWORD` | Your Hostinger SSH password (hPanel → SSH Access → Password → Change, if you need to (re)set it) |
+| `DEPLOY_PATH` | The absolute path to your domain's `public_html` folder, e.g. `/home/u123456789/domains/yourdomain.com/public_html` (no trailing slash) |
+
+That's it — five secrets, no separate public_html path, no SSH key setup.
 
 Using a password instead of an SSH key is simpler to wire up, but it means
 this exact password — your real Hostinger login — lives in GitHub Secrets.
 If you'd rather scope this down to a revocable deploy-only credential
-later, switching back to key-based auth just means changing this workflow
-back; nothing else about the setup changes.
+later, switching back to key-based auth just means changing this workflow;
+nothing else about the setup changes.
 
 ## 5. Going forward
 
 Push to `main` → GitHub Actions builds and deploys automatically. Watch
-progress under the repo's **Actions** tab. First deploy will fail fast and
-tell you exactly which secret or SSH step is wrong — that's expected while
-dialing this in.
+progress under the repo's **Actions** tab.
 
 To deploy without a new commit (e.g. after only changing a Hostinger-side
 setting), use **Actions → Deploy to Hostinger → Run workflow**.
