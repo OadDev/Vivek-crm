@@ -43,9 +43,40 @@ admin user, and logs you straight into the dashboard.
 > `QUEUE_CONNECTION=sync` on purpose — the app must be able to boot (and
 > serve the Setup Wizard itself) before any database tables exist.
 
+## Gmail Integration (real OAuth)
+
+Settings → Gmail Integration connects a real Gmail account via Google OAuth
+2.0 — not a placeholder. One-time setup, done by you (not in this repo or
+chat):
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create a
+   project (or reuse one), enable the **Gmail API**, and configure the
+   OAuth consent screen (Internal or External + your email as a test user
+   is enough for personal use).
+2. Create an **OAuth client ID** (Web application). Add an Authorized
+   redirect URI matching exactly:
+   `https://your-domain.example/settings/gmail/callback`
+3. Add three values to your live `.env` (SSH in, or edit via File Manager —
+   these aren't written by the deploy pipeline or the Setup Wizard):
+   ```
+   GOOGLE_CLIENT_ID=...
+   GOOGLE_CLIENT_SECRET=...
+   GOOGLE_REDIRECT_URI=https://your-domain.example/settings/gmail/callback
+   ```
+   Then run `php artisan config:clear` (or just redeploy — the pipeline
+   does this automatically once `storage/app/installed.lock` exists).
+4. Click **Connect Gmail** in Settings — this redirects to Google's real
+   consent screen. On approval, the account's inbox starts syncing (via the
+   `gmail:sync` scheduled command, every 5 minutes, and immediately via
+   **Sync Now**), and replies sent from the Gmail Inbox page go out through
+   the real Gmail API, threaded onto the original conversation.
+
+Access/refresh tokens are stored encrypted in the `gmail_accounts` table,
+not in `.env` — only the OAuth app's own client ID/secret live there.
+
 ## Scheduled automation
 
-Two artisan commands drive the background automation described in the spec:
+Three artisan commands drive the background automation described in the spec:
 
 - `contacts:sync` — pulls contacts from the configured data source (an
   uploaded Excel file or a public Google Sheet link, configurable from the
@@ -56,9 +87,11 @@ Two artisan commands drive the background automation described in the spec:
 - `contacts:recalculate-statuses` — runs daily and re-applies the same
   7-day / 20-day rule to every contact based on `last_contacted_at`, so
   statuses keep advancing automatically even without a fresh import.
+- `gmail:sync` — pulls new inbox messages from the connected Gmail account
+  every 5 minutes (no-op if nothing is connected).
 
-Both are registered in `routes/console.php` via the Laravel scheduler. In
-production, point a single system cron entry at it:
+All three are registered in `routes/console.php` via the Laravel scheduler.
+In production, point a single system cron entry at it:
 
 ```bash
 * * * * * cd /path-to-app && php artisan schedule:run >> /dev/null 2>&1
@@ -68,7 +101,9 @@ production, point a single system cron entry at it:
 
 - **Dashboard** — live stats, weekly volume chart, activity feed.
 - **Gmail Inbox** — folders, threaded conversations, reply-in-thread, star/
-  archive, and "Create Contact" from an unmatched sender.
+  archive, and "Create Contact" from an unmatched sender. Backed by a real
+  connected Gmail account once set up (see "Gmail Integration" above);
+  falls back to local-only storage if nothing is connected.
 - **Contacts** — per-field custom filters (including WhatsApp and email),
   date-range filter, sortable columns, star-to-pin-to-top, Active/Follow-up/
   Inactive status automation, Excel import/export, and the auto-sync data
@@ -79,6 +114,5 @@ production, point a single system cron entry at it:
 - **Product Master** — Excel import/export, and a "Standard Copper
   Conductor Reference" quick-lookup popup (editable) next to the product
   table.
-- **Settings** — profile, password, theme, Gmail connection toggle (UI-only
-  placeholder — full OAuth sync is a future integration), WhatsApp defaults,
-  system preferences.
+- **Settings** — profile, password, theme, real Gmail OAuth connect/
+  disconnect/sync, WhatsApp defaults, system preferences.

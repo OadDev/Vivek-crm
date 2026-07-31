@@ -6,7 +6,11 @@ use App\Models\Activity;
 use App\Models\Contact;
 use App\Models\EmailConversation;
 use App\Models\EmailMessage;
+use App\Models\GmailAccount;
+use App\Services\GmailApiService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class GmailController extends Controller
 {
@@ -82,16 +86,30 @@ class GmailController extends Controller
         return redirect()->route('gmail.index')->with('success', 'Conversation moved to '.ucfirst($request->input('folder')).'.');
     }
 
-    public function reply(Request $request, EmailConversation $conversation)
+    public function reply(Request $request, EmailConversation $conversation, GmailApiService $gmail)
     {
         $data = $request->validate(['body' => ['required', 'string']]);
+        $bodyHtml = nl2br(e($data['body']));
+
+        $sentViaGmail = false;
+        $sendError = null;
+
+        if (GmailAccount::current()->isConnected()) {
+            try {
+                $gmail->sendReply($conversation, $bodyHtml);
+                $sentViaGmail = true;
+            } catch (Throwable $e) {
+                $sendError = $e->getMessage();
+                Log::warning('Gmail send failed: '.$e->getMessage());
+            }
+        }
 
         EmailMessage::create([
             'email_conversation_id' => $conversation->id,
             'direction' => 'outgoing',
             'from_name' => auth()->user()->name,
             'to_name' => $conversation->sender_name,
-            'body' => nl2br(e($data['body'])),
+            'body' => $bodyHtml,
             'sent_at' => now(),
         ]);
 
@@ -103,8 +121,18 @@ class GmailController extends Controller
 
         Activity::log("Replied to <b>{$conversation->sender_name}</b> — {$conversation->subject}", 'bi-reply-fill', 'primary', $conversation);
 
+        $status = $sentViaGmail
+            ? 'success'
+            : (GmailAccount::current()->isConnected() ? 'error' : 'success');
+
+        $message = $sentViaGmail
+            ? 'Reply sent via Gmail.'
+            : (GmailAccount::current()->isConnected()
+                ? 'Saved locally, but sending via Gmail failed: '.$sendError
+                : 'Reply saved locally (connect Gmail in Settings to send for real).');
+
         return redirect()->route('gmail.index', ['folder' => $conversation->folder, 'conversation' => $conversation->id])
-            ->with('success', 'Reply sent.');
+            ->with($status, $message);
     }
 
     public function createContact(Request $request, EmailConversation $conversation)

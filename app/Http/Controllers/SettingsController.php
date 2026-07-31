@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ContactSyncSetting;
+use App\Models\GmailAccount;
 use App\Models\Setting;
 use App\Models\WhatsappTemplate;
 use Illuminate\Http\Request;
@@ -15,10 +16,9 @@ class SettingsController extends Controller
     {
         $templates = WhatsappTemplate::orderBy('name')->get();
         $syncSetting = ContactSyncSetting::current();
+        $gmailAccount = GmailAccount::current();
 
         $settings = [
-            'gmail_connected' => Setting::get('gmail_connected', '1') === '1',
-            'gmail_account' => Setting::get('gmail_account', auth()->user()->email),
             'whatsapp_sender_number' => Setting::get('whatsapp_sender_number', ''),
             'whatsapp_default_template_id' => Setting::get('whatsapp_default_template_id'),
             'pref_email_notifications' => Setting::get('pref_email_notifications', '1') === '1',
@@ -28,7 +28,7 @@ class SettingsController extends Controller
             'timezone' => Setting::get('timezone', 'Asia/Kolkata (IST)'),
         ];
 
-        return view('settings.index', compact('templates', 'settings', 'syncSetting'));
+        return view('settings.index', compact('templates', 'settings', 'syncSetting', 'gmailAccount'));
     }
 
     public function updateProfile(Request $request)
@@ -54,21 +54,6 @@ class SettingsController extends Controller
         auth()->user()->update(['password' => Hash::make($request->input('password'))]);
 
         return redirect()->route('settings.index')->with('success', 'Password updated successfully.');
-    }
-
-    public function updateGmail(Request $request)
-    {
-        $connect = $request->input('action') === 'connect';
-
-        Setting::setMany([
-            'gmail_connected' => $connect ? '1' : '0',
-            'gmail_account' => $connect ? auth()->user()->email : '',
-        ]);
-
-        return redirect()->route('settings.index')->with(
-            'success',
-            $connect ? 'Gmail account connected.' : 'Gmail account disconnected.'
-        );
     }
 
     public function updateWhatsapp(Request $request)

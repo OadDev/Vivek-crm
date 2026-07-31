@@ -86,19 +86,36 @@
           <div class="d-flex align-items-center gap-2">
             <i class="bi bi-google" style="font-size:20px;color:var(--color-danger);"></i>
             <div>
-              <div class="fw-600 small">{{ $settings['gmail_account'] ?: 'No account connected' }}</div>
-              <div class="chip {{ $settings['gmail_connected'] ? 'chip-success' : 'chip-danger' }}"><i class="bi bi-circle-fill"></i>{{ $settings['gmail_connected'] ? 'Connected' : 'Disconnected' }}</div>
+              <div class="fw-600 small">{{ $gmailAccount->email ?: 'No account connected' }}</div>
+              <div class="chip {{ $gmailAccount->isConnected() ? 'chip-success' : 'chip-danger' }}"><i class="bi bi-circle-fill"></i>{{ $gmailAccount->isConnected() ? 'Connected' : 'Disconnected' }}</div>
             </div>
           </div>
         </div>
-        <form method="POST" action="{{ route('settings.gmail') }}" class="d-inline">
-          @csrf
-          <input type="hidden" name="action" value="{{ $settings['gmail_connected'] ? 'disconnect' : 'connect' }}">
-          <button type="submit" class="btn {{ $settings['gmail_connected'] ? 'btn-danger-c' : 'btn-outline-c' }} btn-sm">
-            <i class="bi {{ $settings['gmail_connected'] ? 'bi-x-circle' : 'bi-plug-fill' }} me-1"></i>{{ $settings['gmail_connected'] ? 'Disconnect Gmail' : 'Connect Gmail' }}
-          </button>
-        </form>
-        <p class="small text-muted-c mt-2 mb-0">Full Gmail OAuth sync is a future integration; this toggle reflects connection state in the UI today.</p>
+
+        @if ($gmailAccount->isConnected())
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <form method="POST" action="{{ route('settings.gmail.sync-now') }}" class="d-inline">
+              @csrf
+              <button type="submit" class="btn btn-outline-c btn-sm"><i class="bi bi-arrow-repeat me-1"></i>Sync Now</button>
+            </form>
+            <form method="POST" action="{{ route('settings.gmail.disconnect') }}" class="d-inline">
+              @csrf
+              <button type="submit" class="btn btn-danger-c btn-sm"><i class="bi bi-x-circle me-1"></i>Disconnect Gmail</button>
+            </form>
+          </div>
+          <p class="small text-muted-c mt-2 mb-0">
+            @if ($gmailAccount->last_synced_at)
+              Last synced {{ $gmailAccount->last_synced_at->diffForHumans() }} — {{ $gmailAccount->last_sync_message }}
+            @else
+              Never synced yet. New inbox mail is also pulled automatically every few minutes.
+            @endif
+          </p>
+        @else
+          <a href="{{ route('settings.gmail.connect') }}" class="btn btn-outline-c btn-sm">
+            <i class="bi bi-plug-fill me-1"></i>Connect Gmail
+          </a>
+          <p class="small text-muted-c mt-2 mb-0">Redirects to Google's real sign-in to authorize inbox read + send access.</p>
+        @endif
       </div>
     </div>
   </div>

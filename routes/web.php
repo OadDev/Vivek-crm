@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GmailAuthController;
 use App\Http\Controllers\GmailController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReferenceTableController;
@@ -95,7 +96,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [SettingsController::class, 'index'])->name('index');
         Route::put('/profile', [SettingsController::class, 'updateProfile'])->name('profile');
         Route::put('/password', [SettingsController::class, 'updatePassword'])->name('password');
-        Route::post('/gmail', [SettingsController::class, 'updateGmail'])->name('gmail');
+        Route::get('/gmail/connect', [GmailAuthController::class, 'redirect'])->name('gmail.connect');
+        Route::get('/gmail/callback', [GmailAuthController::class, 'callback'])->name('gmail.callback');
+        Route::post('/gmail/disconnect', [GmailAuthController::class, 'disconnect'])->name('gmail.disconnect');
+        Route::post('/gmail/sync-now', [GmailAuthController::class, 'syncNow'])->name('gmail.sync-now');
         Route::put('/whatsapp', [SettingsController::class, 'updateWhatsapp'])->name('whatsapp');
         Route::put('/preferences', [SettingsController::class, 'updatePreferences'])->name('preferences');
     });

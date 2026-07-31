@@ -14,3 +14,6 @@ Schedule::command('contacts:sync')->everyMinute()->withoutOverlapping();
 
 // Active -> Follow-up after 7 days, -> Inactive after 20 days without contact.
 Schedule::command('contacts:recalculate-statuses')->daily();
+
+// No-op if no Gmail account is connected.
+Schedule::command('gmail:sync')->everyFiveMinutes()->withoutOverlapping();

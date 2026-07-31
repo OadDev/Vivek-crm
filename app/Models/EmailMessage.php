@@ -7,7 +7,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EmailMessage extends Model
 {
-    protected $fillable = ['email_conversation_id', 'direction', 'from_name', 'to_name', 'body', 'sent_at'];
+    protected $fillable = [
+        'email_conversation_id',
+        'gmail_message_id',
+        'message_id_header',
+        'direction',
+        'from_name',
+        'to_name',
+        'body',
+        'sent_at',
+    ];
 
     protected function casts(): array
     {
