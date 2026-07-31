@@ -25,58 +25,58 @@ jobs:
       - name: Install sshpass
         run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
 
-      # DEPLOY_PATH *is* the domain's public_html folder -- no separate
-      # public_html secret, no symlink. Everything except public/ goes into
-      # DEPLOY_PATH/app/ (outside the URL-addressable structure conceptually,
-      # though still technically under the same webroot -- see .htaccess/
-      # index.php below for how requests are routed). This also sidesteps
-      # shared-hosting PHP-FPM sandboxing (open_basedir) that can silently
-      # block a symlink pointing outside the domain's own folder.
-      - name: Deploy app bundle (vendor, app, bootstrap, etc.) to DEPLOY_PATH/app
+      # HOSTINGER_DEPLOY_PATH *is* the domain's public_html folder -- no
+      # separate public_html secret, no symlink. Everything except public/
+      # goes into HOSTINGER_DEPLOY_PATH/app/ (still technically under the
+      # same webroot -- see .htaccess/index.php below for how requests are
+      # routed). This also sidesteps shared-hosting PHP-FPM sandboxing
+      # (open_basedir) that can silently block a symlink pointing outside
+      # the domain's own folder.
+      - name: Deploy app bundle (vendor, app, bootstrap, etc.) to HOSTINGER_DEPLOY_PATH/app
         run: |
-          sshpass -p "${{ secrets.SSH_PASSWORD }}" rsync -rltz --delete \
-            -e "ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no" \
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" rsync -rltz --delete \
+            -e "ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no" \
             --exclude='/.git/' --exclude='/.github/' --exclude='/tests/' \
             --exclude='/.env' --exclude='/public/' --exclude='/deploy/' \
             --exclude='/storage/app/' --exclude='/storage/framework/cache/' \
             --exclude='/storage/framework/sessions/' --exclude='/storage/framework/views/' \
             --exclude='/storage/logs/' --exclude='/node_modules/' \
-            ./ "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/app/"
+            ./ "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}:${{ secrets.HOSTINGER_DEPLOY_PATH }}/app/"
 
       # Copies public/ contents (assets, .htaccess, favicon, robots.txt) to
       # the webroot itself. index.php is excluded here and deployed
       # separately below (a modified version pointing into app/).
-      - name: Deploy public assets to DEPLOY_PATH
+      - name: Deploy public assets to HOSTINGER_DEPLOY_PATH
         run: |
-          sshpass -p "${{ secrets.SSH_PASSWORD }}" rsync -rltz \
-            -e "ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no" \
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" rsync -rltz \
+            -e "ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no" \
             --exclude='index.php' --exclude='/app/' \
-            ./public/ "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/"
+            ./public/ "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}:${{ secrets.HOSTINGER_DEPLOY_PATH }}/"
 
       - name: Deploy front controller (index.php)
         run: |
-          sshpass -p "${{ secrets.SSH_PASSWORD }}" rsync -rltz \
-            -e "ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no" \
-            ./deploy/hostinger-index.php "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/index.php"
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" rsync -rltz \
+            -e "ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no" \
+            ./deploy/hostinger-index.php "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}:${{ secrets.HOSTINGER_DEPLOY_PATH }}/index.php"
 
       # app/ holds .env, vendor/, etc. and sits under the same webroot as
       # index.php on this hosting plan (no way to place it outside the
       # document root) -- without this, https://yourdomain/app/.env would be
       # a real, publicly downloadable file.
-      - name: Block direct HTTP access to DEPLOY_PATH/app
+      - name: Block direct HTTP access to HOSTINGER_DEPLOY_PATH/app
         run: |
-          sshpass -p "${{ secrets.SSH_PASSWORD }}" rsync -rltz \
-            -e "ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no" \
-            ./deploy/app-htaccess "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/app/.htaccess"
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" rsync -rltz \
+            -e "ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no" \
+            ./deploy/app-htaccess "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}:${{ secrets.HOSTINGER_DEPLOY_PATH }}/app/.htaccess"
 
       # Idempotent -- safe on every deploy. Creates the directories Laravel
       # needs to write into (excluded from rsync so real data in them
       # survives deploys).
       - name: Ensure storage directories exist
         run: |
-          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no \
-            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
-            'cd ${{ secrets.DEPLOY_PATH }}/app && \
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no \
+            "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}" \
+            'cd ${{ secrets.HOSTINGER_DEPLOY_PATH }}/app && \
              mkdir -p storage/app/private storage/app/public \
                       storage/framework/cache/data storage/framework/sessions storage/framework/views \
                       storage/logs && \
@@ -91,9 +91,9 @@ jobs:
       # (in case the domain changes) -- everything else is left alone.
       - name: Bootstrap .env on first deploy
         run: |
-          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no \
-            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
-            'cd ${{ secrets.DEPLOY_PATH }}/app && \
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no \
+            "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}" \
+            'cd ${{ secrets.HOSTINGER_DEPLOY_PATH }}/app && \
              PHP_BIN=""; \
              for c in php8.4 php8.3 php8.2 php82 php8_2; do p=$(command -v "$c" 2>/dev/null) && PHP_BIN="$p" && break; done; \
              if [ -z "$PHP_BIN" ]; then \
@@ -122,9 +122,9 @@ jobs:
       # fail on every deploy until setup is done.
       - name: Run post-deploy commands
         run: |
-          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no \
-            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
-            'cd ${{ secrets.DEPLOY_PATH }}/app && \
+          sshpass -p "${{ secrets.HOSTINGER_PASSWORD }}" ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=no \
+            "${{ secrets.HOSTINGER_USERNAME }}@${{ secrets.HOSTINGER_HOST }}" \
+            'cd ${{ secrets.HOSTINGER_DEPLOY_PATH }}/app && \
              PHP_BIN=$(command -v php8.4 || command -v php8.3 || command -v php8.2 || command -v php) && \
              echo "Using $PHP_BIN ($($PHP_BIN -v | head -1))" && \
              if [ -f storage/app/installed.lock ]; then \

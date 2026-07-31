@@ -6,16 +6,16 @@ Every push to `main` triggers `.github/workflows/deploy.yml`, which:
    **not** on the shared-hosting box, since Hostinger shared plans are too
    resource-constrained to reliably run `composer install` themselves.
 2. Rsyncs the app code (vendor, app, bootstrap, config, etc.) into
-   `DEPLOY_PATH/app/` over SSH — a subfolder *inside* your public_html, not a
+   `HOSTINGER_DEPLOY_PATH/app/` over SSH — a subfolder *inside* your public_html, not a
    sibling directory. This hosting plan has no way to point the document
    root somewhere else or reliably follow a symlink out of it (shared-hosting
    PHP-FPM sandboxing tends to block that silently), so everything has to
    live under the one folder Hostinger actually serves.
 3. Rsyncs `public/`'s contents (CSS/JS/images, `.htaccess`, favicon,
-   robots.txt) directly into `DEPLOY_PATH` itself, and deploys a modified
+   robots.txt) directly into `HOSTINGER_DEPLOY_PATH` itself, and deploys a modified
    `index.php` (`deploy/hostinger-index.php`) that points into `app/` instead
    of the stock `../vendor`, `../bootstrap` paths.
-4. Deploys `app/.htaccess` (`Require all denied`) so `DEPLOY_PATH/app/` —
+4. Deploys `app/.htaccess` (`Require all denied`) so `HOSTINGER_DEPLOY_PATH/app/` —
    which holds `.env`, `vendor/`, everything — is never directly reachable
    over HTTP, even though it's nested under the same webroot as `index.php`.
 5. Creates the storage directories Laravel needs to write into, and
@@ -56,9 +56,9 @@ before switching to a versioned binary path.)
 
 ## 2. Things the pipeline does for you automatically
 
-- Rsyncs the app into `DEPLOY_PATH/app/` and the built public assets +
-  front controller into `DEPLOY_PATH` itself.
-- Locks down `DEPLOY_PATH/app/` from direct web access.
+- Rsyncs the app into `HOSTINGER_DEPLOY_PATH/app/` and the built public assets +
+  front controller into `HOSTINGER_DEPLOY_PATH` itself.
+- Locks down `HOSTINGER_DEPLOY_PATH/app/` from direct web access.
 - Creates `storage/app/{private,public}`, `storage/framework/{cache/data,sessions,views}`,
   `storage/logs`, and `chmod 775`s them.
 - Bootstraps `.env` (and `APP_KEY`) the first time there isn't one.
@@ -84,13 +84,15 @@ Add all of these:
 
 | Secret | Value |
 |---|---|
-| `SSH_HOST` | Your Hostinger SSH host/IP (hPanel → SSH Access) |
-| `SSH_PORT` | Your Hostinger SSH port (hPanel → SSH Access) |
-| `SSH_USERNAME` | Your Hostinger SSH username (hPanel → SSH Access) |
-| `SSH_PASSWORD` | Your Hostinger SSH password (hPanel → SSH Access → Password → Change, if you need to (re)set it) |
-| `DEPLOY_PATH` | The absolute path to your domain's `public_html` folder, e.g. `/home/u123456789/domains/yourdomain.com/public_html` (no trailing slash) |
+| `HOSTINGER_HOST` | Your Hostinger SSH host/IP (hPanel → SSH Access) |
+| `HOSTINGER_PORT` | Your Hostinger SSH port (hPanel → SSH Access) |
+| `HOSTINGER_USERNAME` | Your Hostinger SSH username (hPanel → SSH Access) |
+| `HOSTINGER_PASSWORD` | Your Hostinger SSH password (hPanel → SSH Access → Password → Change, if you need to (re)set it) |
+| `HOSTINGER_DEPLOY_PATH` | The absolute path to your domain's `public_html` folder, e.g. `/home/u123456789/domains/yourdomain.com/public_html` (no trailing slash) |
 
-That's it — five secrets, no separate public_html path, no SSH key setup.
+That's it — five secrets, no SSH key setup. `HOSTINGER_PUBLIC_HTML_PATH` from
+an earlier symlink-based setup is no longer read by the workflow and can be
+deleted whenever convenient.
 
 Using a password instead of an SSH key is simpler to wire up, but it means
 this exact password — your real Hostinger login — lives in GitHub Secrets.
