@@ -80,7 +80,8 @@
       <div class="card-c-body">
         <div class="d-flex align-items-center gap-2 mb-3">
           <div class="settings-card-icon" style="background:var(--color-warning-light);color:var(--color-warning);"><i class="bi bi-envelope-at-fill"></i></div>
-          <h5 class="mb-0">Gmail Integration</h5>
+          <h5 class="mb-0 flex-grow-1">Gmail Integration</h5>
+          <button type="button" class="btn-icon-sq" title="Setup instructions" data-bs-toggle="modal" data-bs-target="#modalGmailInstructions"><i class="bi bi-info-circle"></i></button>
         </div>
         <div class="d-flex align-items-center justify-content-between p-3 mb-3" style="background:var(--bg-surface-2);border-radius:var(--radius-md);">
           <div class="d-flex align-items-center gap-2">
@@ -252,6 +253,8 @@
     </div>
   </div>
 </div>
+
+@include('settings._gmail_instructions_modal')
 @endsection
 
 @push('scripts')

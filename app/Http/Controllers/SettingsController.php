@@ -17,6 +17,7 @@ class SettingsController extends Controller
         $templates = WhatsappTemplate::orderBy('name')->get();
         $syncSetting = ContactSyncSetting::current();
         $gmailAccount = GmailAccount::current();
+        $gmailCallbackUrl = route('settings.gmail.callback');
 
         $settings = [
             'whatsapp_sender_number' => Setting::get('whatsapp_sender_number', ''),
@@ -28,7 +29,7 @@ class SettingsController extends Controller
             'timezone' => Setting::get('timezone', 'Asia/Kolkata (IST)'),
         ];
 
-        return view('settings.index', compact('templates', 'settings', 'syncSetting', 'gmailAccount'));
+        return view('settings.index', compact('templates', 'settings', 'syncSetting', 'gmailAccount', 'gmailCallbackUrl'));
     }
 
     public function updateProfile(Request $request)
