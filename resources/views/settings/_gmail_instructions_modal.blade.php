@@ -8,10 +8,12 @@
       <div class="modal-body">
         <p class="small text-muted-c">
           Gmail Integration uses real Google sign-in (OAuth), not a simple API
-          key. You create one Google Cloud project and OAuth client, then add
-          its Client ID/Secret to this app's <code>.env</code> file. The steps
-          below are identical except for the redirect URI, which differs
-          between a live domain and a local XAMPP install.
+          key. You create one Google Cloud project and OAuth client, then paste
+          its Client ID/Secret into the <strong>Google OAuth Client</strong>
+          fields on this Settings page (they're stored encrypted in the
+          database, not in a file). The steps below are identical except for
+          the redirect URI, which differs between a live domain and a local
+          XAMPP install.
         </p>
 
         <ol class="small ps-3 mb-4">
@@ -40,15 +42,11 @@
               <input type="text" class="form-control" id="gmailRedirectLive" value="{{ $gmailCallbackUrl }}" readonly>
               <button class="btn btn-outline-c" type="button" data-copy-target="gmailRedirectLive"><i class="bi bi-clipboard"></i> Copy</button>
             </div>
-            <p class="small mb-1">Then, on your live server, add these three lines to <code>.env</code> (via hPanel File Manager or SSH — not through this app):</p>
-            <pre class="small p-2 mb-2" style="background:var(--bg-surface-2);border-radius:var(--radius-md);white-space:pre-wrap;">GOOGLE_CLIENT_ID=your-client-id
-GOOGLE_CLIENT_SECRET=your-client-secret
-GOOGLE_REDIRECT_URI={{ $gmailCallbackUrl }}</pre>
             <p class="small text-muted-c mb-0">
-              Then run <code>php artisan config:clear</code> (or just push a new
-              commit — the deploy pipeline clears config caches automatically
-              once the app is installed). Come back here and click
-              <strong>Connect Gmail</strong>.
+              Paste the Client ID and Client Secret into the <strong>Google
+              OAuth Client</strong> fields on this page and click
+              <strong>Save Credentials</strong>, then <strong>Connect Gmail</strong>.
+              No <code>.env</code> editing or redeploy needed.
             </p>
           </div>
 
@@ -58,21 +56,19 @@ GOOGLE_REDIRECT_URI={{ $gmailCallbackUrl }}</pre>
               Google only allows non-HTTPS redirect URIs for <code>localhost</code>/<code>127.0.0.1</code>
               — so for XAMPP, open this app via <code>http://localhost/...</code>
               (not a custom hostname like <code>vivek-crm.local</code>, unless it has real HTTPS).
+              Also set <code>APP_URL=http://localhost</code> in your local
+              <code>.env</code> so the redirect URI this app generates matches.
             </p>
             <p class="small mb-2">Redirect URI to add in Google Cloud Console:</p>
             <div class="input-group input-group-sm mb-3">
               <input type="text" class="form-control" id="gmailRedirectLocal" value="http://localhost/settings/gmail/callback" readonly>
               <button class="btn btn-outline-c" type="button" data-copy-target="gmailRedirectLocal"><i class="bi bi-clipboard"></i> Copy</button>
             </div>
-            <p class="small mb-1">Adjust the port if XAMPP's Apache isn't on the default port 80, e.g. <code>http://localhost:8080/settings/gmail/callback</code>. In your local <code>.env</code>:</p>
-            <pre class="small p-2 mb-2" style="background:var(--bg-surface-2);border-radius:var(--radius-md);white-space:pre-wrap;">APP_URL=http://localhost
-GOOGLE_CLIENT_ID=your-client-id
-GOOGLE_CLIENT_SECRET=your-client-secret
-GOOGLE_REDIRECT_URI=http://localhost/settings/gmail/callback</pre>
             <p class="small text-muted-c mb-0">
-              Make sure your XAMPP vhost's document root points at this
-              project's <code>public/</code> folder. Then run
-              <code>php artisan config:clear</code>, reload Settings, and click
+              Adjust the port if XAMPP's Apache isn't on the default port 80,
+              e.g. <code>http://localhost:8080/settings/gmail/callback</code>
+              (and <code>APP_URL</code> to match). Then paste the same Client
+              ID/Secret into the fields on this page, save, and click
               <strong>Connect Gmail</strong>.
             </p>
           </div>

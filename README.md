@@ -56,23 +56,23 @@ chat):
 2. Create an **OAuth client ID** (Web application). Add an Authorized
    redirect URI matching exactly:
    `https://your-domain.example/settings/gmail/callback`
-3. Add three values to your live `.env` (SSH in, or edit via File Manager —
-   these aren't written by the deploy pipeline or the Setup Wizard):
-   ```
-   GOOGLE_CLIENT_ID=...
-   GOOGLE_CLIENT_SECRET=...
-   GOOGLE_REDIRECT_URI=https://your-domain.example/settings/gmail/callback
-   ```
-   Then run `php artisan config:clear` (or just redeploy — the pipeline
-   does this automatically once `storage/app/installed.lock` exists).
-4. Click **Connect Gmail** in Settings — this redirects to Google's real
-   consent screen. On approval, the account's inbox starts syncing (via the
+   (Settings → Gmail Integration → the ℹ️ instructions button shows this
+   exact URL for your site, plus the localhost/XAMPP equivalent, with a
+   copy button.)
+3. Paste the resulting **Client ID** and **Client Secret** into the "Google
+   OAuth Client" fields right there on the Settings page and click **Save
+   Credentials** — no `.env` editing, SSH, or redeploy needed.
+4. Click **Connect Gmail** — this redirects to Google's real consent
+   screen. On approval, the account's inbox starts syncing (via the
    `gmail:sync` scheduled command, every 5 minutes, and immediately via
    **Sync Now**), and replies sent from the Gmail Inbox page go out through
    the real Gmail API, threaded onto the original conversation.
 
-Access/refresh tokens are stored encrypted in the `gmail_accounts` table,
-not in `.env` — only the OAuth app's own client ID/secret live there.
+Client ID/Secret and the connected account's access/refresh tokens are all
+stored encrypted in the `gmail_accounts` table — nothing Gmail-related lives
+in `.env` unless you specifically prefer setting `GOOGLE_CLIENT_ID`/
+`GOOGLE_CLIENT_SECRET`/`GOOGLE_REDIRECT_URI` that way instead (still
+supported as a fallback when the Settings-page fields are empty).
 
 ## Scheduled automation
 

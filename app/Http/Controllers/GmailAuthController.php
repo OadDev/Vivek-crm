@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\GmailAccount;
 use App\Services\GmailApiService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Facades\Socialite;
 use Throwable;
@@ -18,8 +19,47 @@ class GmailAuthController extends Controller
         'https://www.googleapis.com/auth/gmail.send',
     ];
 
+    public function saveCredentials(Request $request)
+    {
+        $data = $request->validate([
+            'client_id' => ['required', 'string', 'max:255'],
+            'client_secret' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $account = GmailAccount::current();
+
+        $account->update([
+            'client_id' => $data['client_id'],
+            // Blank means "keep the existing secret" -- the field is never
+            // re-populated with the real value once saved, so an empty
+            // submit isn't the user intentionally clearing it.
+            'client_secret' => $data['client_secret'] !== null && $data['client_secret'] !== ''
+                ? $data['client_secret']
+                : $account->client_secret,
+        ]);
+
+        return redirect()->route('settings.index')->with('success', 'Google OAuth credentials saved.');
+    }
+
+    protected function configureSocialite(): void
+    {
+        $account = GmailAccount::current();
+
+        config([
+            'services.google.client_id' => $account->resolvedClientId(),
+            'services.google.client_secret' => $account->resolvedClientSecret(),
+            'services.google.redirect' => route('settings.gmail.callback'),
+        ]);
+    }
+
     public function redirect()
     {
+        if (! GmailAccount::current()->hasCredentials()) {
+            return redirect()->route('settings.index')->with('error', 'Add your Google OAuth Client ID and Secret first (see the instructions button).');
+        }
+
+        $this->configureSocialite();
+
         return Socialite::driver('google')
             ->scopes(self::SCOPES)
             ->with(['access_type' => 'offline', 'prompt' => 'consent'])
@@ -28,6 +68,8 @@ class GmailAuthController extends Controller
 
     public function callback()
     {
+        $this->configureSocialite();
+
         try {
             $googleUser = Socialite::driver('google')->user();
         } catch (Throwable $e) {

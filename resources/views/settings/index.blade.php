@@ -93,6 +93,24 @@
           </div>
         </div>
 
+        {{-- Google OAuth Client (from Google Cloud Console — see Instructions) --}}
+        <form method="POST" action="{{ route('settings.gmail.credentials') }}" class="mb-3 p-3" style="background:var(--bg-surface-2);border-radius:var(--radius-md);">
+          @csrf
+          <div class="small fw-600 mb-2">Google OAuth Client</div>
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label small mb-1">Client ID</label>
+              <input type="text" name="client_id" class="form-control form-control-sm" value="{{ old('client_id', $gmailAccount->client_id) }}" placeholder="xxxxxxxx.apps.googleusercontent.com" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small mb-1">Client Secret</label>
+              <input type="password" name="client_secret" class="form-control form-control-sm" placeholder="{{ $gmailAccount->client_secret ? '•••••••• (saved — leave blank to keep)' : 'GOCSPX-...' }}">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-outline-c btn-sm mt-2"><i class="bi bi-key-fill me-1"></i>Save Credentials</button>
+          <span class="small text-muted-c ms-2">Stored encrypted in the database — not in a file. Click <i class="bi bi-info-circle"></i> above for where to get these.</span>
+        </form>
+
         @if ($gmailAccount->isConnected())
           <div class="d-flex align-items-center gap-2 flex-wrap">
             <form method="POST" action="{{ route('settings.gmail.sync-now') }}" class="d-inline">
@@ -111,11 +129,16 @@
               Never synced yet. New inbox mail is also pulled automatically every few minutes.
             @endif
           </p>
-        @else
+        @elseif ($gmailAccount->hasCredentials())
           <a href="{{ route('settings.gmail.connect') }}" class="btn btn-outline-c btn-sm">
             <i class="bi bi-plug-fill me-1"></i>Connect Gmail
           </a>
           <p class="small text-muted-c mt-2 mb-0">Redirects to Google's real sign-in to authorize inbox read + send access.</p>
+        @else
+          <button type="button" class="btn btn-outline-c btn-sm" disabled>
+            <i class="bi bi-plug-fill me-1"></i>Connect Gmail
+          </button>
+          <p class="small text-muted-c mt-2 mb-0">Save your Client ID and Secret above first.</p>
         @endif
       </div>
     </div>

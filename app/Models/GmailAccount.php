@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class GmailAccount extends Model
 {
     protected $fillable = [
+        'client_id',
+        'client_secret',
         'google_id',
         'email',
         'name',
@@ -23,6 +25,7 @@ class GmailAccount extends Model
     protected function casts(): array
     {
         return [
+            'client_secret' => 'encrypted',
             'access_token' => 'encrypted',
             'refresh_token' => 'encrypted',
             'token_expires_at' => 'datetime',
@@ -34,6 +37,26 @@ class GmailAccount extends Model
     public static function current(): self
     {
         return static::firstOrCreate(['id' => 1]);
+    }
+
+    public function hasCredentials(): bool
+    {
+        return ! empty($this->resolvedClientId()) && ! empty($this->resolvedClientSecret());
+    }
+
+    /**
+     * Prefer credentials saved on this Settings page; fall back to .env
+     * (GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET) for anyone who set it up that
+     * way before this UI existed.
+     */
+    public function resolvedClientId(): ?string
+    {
+        return $this->client_id ?: config('services.google.client_id');
+    }
+
+    public function resolvedClientSecret(): ?string
+    {
+        return $this->client_secret ?: config('services.google.client_secret');
     }
 
     public function isConnected(): bool

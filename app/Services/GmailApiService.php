@@ -32,8 +32,8 @@ class GmailApiService
         }
 
         $response = Http::asForm()->post(self::TOKEN_URL, [
-            'client_id' => config('services.google.client_id'),
-            'client_secret' => config('services.google.client_secret'),
+            'client_id' => $account->resolvedClientId(),
+            'client_secret' => $account->resolvedClientSecret(),
             'refresh_token' => $account->refresh_token,
             'grant_type' => 'refresh_token',
         ]);

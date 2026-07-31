@@ -96,6 +96,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [SettingsController::class, 'index'])->name('index');
         Route::put('/profile', [SettingsController::class, 'updateProfile'])->name('profile');
         Route::put('/password', [SettingsController::class, 'updatePassword'])->name('password');
+        Route::post('/gmail/credentials', [GmailAuthController::class, 'saveCredentials'])->name('gmail.credentials');
         Route::get('/gmail/connect', [GmailAuthController::class, 'redirect'])->name('gmail.connect');
         Route::get('/gmail/callback', [GmailAuthController::class, 'callback'])->name('gmail.callback');
         Route::post('/gmail/disconnect', [GmailAuthController::class, 'disconnect'])->name('gmail.disconnect');
