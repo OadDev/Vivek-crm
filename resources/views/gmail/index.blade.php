@@ -89,12 +89,12 @@
             @else
               <button type="button" class="btn btn-primary-c btn-sm" data-bs-toggle="modal" data-bs-target="#modalCreateContactFromMail"><i class="bi bi-person-plus-fill me-1"></i>Create Contact</button>
             @endif
-            <form method="PATCH" action="{{ route('gmail.folder', $selected) }}">
+            <form method="POST" action="{{ route('gmail.folder', $selected) }}">
               @csrf @method('PATCH')
               <input type="hidden" name="folder" value="archive">
               <button type="submit" class="btn-icon-sq" title="Archive" data-bs-toggle="tooltip"><i class="bi bi-archive"></i></button>
             </form>
-            <form method="PATCH" action="{{ route('gmail.folder', $selected) }}">
+            <form method="POST" action="{{ route('gmail.folder', $selected) }}">
               @csrf @method('PATCH')
               <input type="hidden" name="folder" value="trash">
               <button type="submit" class="btn-icon-sq danger" title="Delete" data-bs-toggle="tooltip"><i class="bi bi-trash"></i></button>
