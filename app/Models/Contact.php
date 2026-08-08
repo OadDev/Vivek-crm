@@ -6,27 +6,44 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Contact extends Model
 {
+    use SoftDeletes;
+
     public const STATUS_ACTIVE = 'active';
 
     public const STATUS_FOLLOW_UP = 'follow_up';
 
     public const STATUS_INACTIVE = 'inactive';
 
+    /** Below this many days since the quotation date, a lead is Active. */
     public const FOLLOW_UP_AFTER_DAYS = 7;
 
-    public const INACTIVE_AFTER_DAYS = 20;
+    /** Beyond this many months since the quotation date, a lead is Inactive. */
+    public const INACTIVE_AFTER_MONTHS = 2;
 
     protected $fillable = [
+        'quote_no',
+        'quotation_date',
         'name',
         'company',
         'email',
         'whatsapp',
         'designation',
+        'sales_man',
+        'gst_number',
+        'transport',
+        'shipping_address',
+        'stage',
+        'priority',
         'status',
         'is_starred',
+        'is_archived',
+        'archived_at',
+        'is_won',
+        'won_at',
         'last_contacted_at',
         'source',
         'notes',
@@ -36,6 +53,11 @@ class Contact extends Model
     {
         return [
             'is_starred' => 'boolean',
+            'is_archived' => 'boolean',
+            'is_won' => 'boolean',
+            'quotation_date' => 'date',
+            'archived_at' => 'datetime',
+            'won_at' => 'datetime',
             'last_contacted_at' => 'datetime',
         ];
     }
@@ -70,22 +92,21 @@ class Contact extends Model
     }
 
     /**
-     * Compute the status a contact should have given a "last contacted" date,
-     * per the 7-day follow-up / 20-day inactive business rule.
+     * Compute the status a lead should have given its quotation date:
+     * Active under 7 days old, Follow-up from 7 days to 2 months,
+     * Inactive beyond 2 months.
      */
-    public static function computeStatusFromDate(?Carbon $lastContactedAt): string
+    public static function computeStatusFromDate(?Carbon $quotationDate): string
     {
-        if (! $lastContactedAt) {
+        if (! $quotationDate) {
             return self::STATUS_ACTIVE;
         }
 
-        $daysSince = $lastContactedAt->diffInDays(now());
-
-        if ($daysSince >= self::INACTIVE_AFTER_DAYS) {
+        if ($quotationDate->lt(now()->subMonths(self::INACTIVE_AFTER_MONTHS))) {
             return self::STATUS_INACTIVE;
         }
 
-        if ($daysSince >= self::FOLLOW_UP_AFTER_DAYS) {
+        if ($quotationDate->diffInDays(now()) >= self::FOLLOW_UP_AFTER_DAYS) {
             return self::STATUS_FOLLOW_UP;
         }
 
@@ -95,6 +116,21 @@ class Contact extends Model
     public function scopeStarredFirst(Builder $query): Builder
     {
         return $query->orderByDesc('is_starred');
+    }
+
+    public function scopePipeline(Builder $query): Builder
+    {
+        return $query->where('is_archived', false)->where('is_won', false);
+    }
+
+    public function scopeArchived(Builder $query): Builder
+    {
+        return $query->where('is_archived', true);
+    }
+
+    public function scopeWon(Builder $query): Builder
+    {
+        return $query->where('is_won', true);
     }
 
     public function initials(): string

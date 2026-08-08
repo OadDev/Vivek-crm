@@ -18,15 +18,20 @@ if (! function_exists('sortLink')) {
 <div class="page-header">
   <div>
     <div class="page-title">Contacts</div>
-    <div class="page-subtitle">All your customer &amp; lead contacts in one directory.</div>
+    <div class="page-subtitle">Every quotation and lead in one pipeline — one row per Quote No.</div>
   </div>
   <div class="d-flex gap-2 flex-wrap">
+    @auth
+    @if (auth()->user()->isAdmin())
     <a href="{{ route('contacts.import.form') }}" class="btn btn-outline-c btn-sm"><i class="bi bi-file-earmark-arrow-up me-1"></i>Import Excel</a>
+    @endif
+    @endauth
     <a href="{{ route('contacts.export') }}" class="btn btn-outline-c btn-sm"><i class="bi bi-file-earmark-arrow-down me-1"></i>Export Excel</a>
     <button class="btn btn-primary-c btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddContact"><i class="bi bi-person-plus-fill me-1"></i>Add Contact</button>
   </div>
 </div>
 
+@if (auth()->user()->isAdmin())
 {{-- Auto-sync data source card --}}
 <div class="card-c mb-3">
   <div class="card-c-body">
@@ -82,20 +87,31 @@ if (! function_exists('sortLink')) {
           <button type="submit" class="btn btn-primary-c btn-sm w-100">Save Data Source</button>
         </div>
         <div class="col-12 small text-muted-c">
-          Expects columns like Name, Company, Email, WhatsApp, Designation, and a date column (e.g. "Last Contacted") — status is computed automatically from that date (Active &lt; 7 days, Follow-up 7–20 days, Inactive &gt; 20 days).
+          Expects columns: Company Name, Date, Phone No., Mail, Sales Man, Address, GST, Transport, Shipping Address,
+          Stage, Quote No., Priority — one row per quotation. Status is computed automatically from the Date column
+          (Active &lt; 7 days, Follow-up 7 days–2 months, Inactive &gt; 2 months). A lead you archive or delete will
+          never be re-added by a later sync, even if it's still in the sheet.
         </div>
       </form>
     </div>
   </div>
 </div>
+@endif
 
 <div class="card-c">
   <div class="card-c-body">
+    <div class="filter-chip-group mb-3">
+      <a href="{{ route('contacts.index', array_merge(request()->except(['view','page']), ['view' => 'pipeline'])) }}" class="filter-chip-btn {{ $view === 'pipeline' ? 'active' : '' }}"><i class="bi bi-kanban me-1"></i>Pipeline <span class="cnt">{{ $counts['pipeline'] }}</span></a>
+      <a href="{{ route('contacts.index', array_merge(request()->except(['view','page']), ['view' => 'won'])) }}" class="filter-chip-btn {{ $view === 'won' ? 'active' : '' }}"><i class="bi bi-trophy-fill me-1"></i>Won <span class="cnt">{{ $counts['won'] }}</span></a>
+      <a href="{{ route('contacts.index', array_merge(request()->except(['view','page']), ['view' => 'archived'])) }}" class="filter-chip-btn {{ $view === 'archived' ? 'active' : '' }}"><i class="bi bi-archive-fill me-1"></i>Archived <span class="cnt">{{ $counts['archived'] }}</span></a>
+    </div>
+
     <form method="GET" action="{{ route('contacts.index') }}">
+      <input type="hidden" name="view" value="{{ $view }}">
       <div class="toolbar-c">
         <div class="toolbar-search">
           <i class="bi bi-search"></i>
-          <input type="text" name="search" class="form-control form-control-sm" placeholder="Search contacts..." value="{{ request('search') }}">
+          <input type="text" name="search" class="form-control form-control-sm" placeholder="Search name, company, email, WhatsApp, quote no..." value="{{ request('search') }}">
         </div>
         <div class="filter-chip-group">
           <a href="{{ route('contacts.index', array_merge(request()->except(['filter_status','page']))) }}" class="filter-chip-btn {{ !request('filter_status') ? 'active' : '' }}">All</a>
@@ -104,7 +120,7 @@ if (! function_exists('sortLink')) {
           @endforeach
         </div>
         <button type="button" class="btn btn-light-c btn-sm" data-bs-toggle="collapse" data-bs-target="#advancedFiltersPanel"><i class="bi bi-sliders me-1"></i>Custom Filters</button>
-        <div class="ms-auto small text-muted-c">{{ $contacts->total() }} contact(s)</div>
+        <div class="ms-auto small text-muted-c">{{ $contacts->total() }} lead(s)</div>
       </div>
 
       <div class="collapse {{ request()->hasAny(['filter_name','filter_company','filter_email','filter_whatsapp','filter_designation','date_from','date_to','starred_only']) ? 'show' : '' }} mb-3" id="advancedFiltersPanel">
@@ -112,10 +128,10 @@ if (! function_exists('sortLink')) {
           <div class="col-md-3"><label class="form-label">Name</label><input type="text" name="filter_name" class="form-control form-control-sm" value="{{ request('filter_name') }}"></div>
           <div class="col-md-3"><label class="form-label">Company</label><input type="text" name="filter_company" class="form-control form-control-sm" value="{{ request('filter_company') }}"></div>
           <div class="col-md-3"><label class="form-label">Email</label><input type="text" name="filter_email" class="form-control form-control-sm" value="{{ request('filter_email') }}"></div>
-          <div class="col-md-3"><label class="form-label">WhatsApp</label><input type="text" name="filter_whatsapp" class="form-control form-control-sm" value="{{ request('filter_whatsapp') }}"></div>
+          <div class="col-md-3"><label class="form-label">WhatsApp / Phone</label><input type="text" name="filter_whatsapp" class="form-control form-control-sm" value="{{ request('filter_whatsapp') }}"></div>
           <div class="col-md-3"><label class="form-label">Designation</label><input type="text" name="filter_designation" class="form-control form-control-sm" value="{{ request('filter_designation') }}"></div>
-          <div class="col-md-3"><label class="form-label">Last Contacted From</label><input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}"></div>
-          <div class="col-md-3"><label class="form-label">Last Contacted To</label><input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}"></div>
+          <div class="col-md-3"><label class="form-label">Quotation Date From</label><input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}"></div>
+          <div class="col-md-3"><label class="form-label">Quotation Date To</label><input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}"></div>
           <div class="col-md-3 d-flex align-items-end">
             <div class="form-check">
               <input class="form-check-input" type="checkbox" name="starred_only" value="1" id="starredOnly" {{ request('starred_only') ? 'checked' : '' }}>
@@ -124,7 +140,7 @@ if (! function_exists('sortLink')) {
           </div>
           <div class="col-12 d-flex gap-2">
             <button type="submit" class="btn btn-primary-c btn-sm">Apply Filters</button>
-            <a href="{{ route('contacts.index') }}" class="btn btn-light-c btn-sm">Clear All</a>
+            <a href="{{ route('contacts.index', ['view' => $view]) }}" class="btn btn-light-c btn-sm">Clear All</a>
           </div>
         </div>
       </div>
@@ -135,13 +151,13 @@ if (! function_exists('sortLink')) {
         <thead>
           <tr>
             <th></th>
-            <th>{!! sortLink('name', 'Name', $sort, $dir) !!}</th>
+            <th>{!! sortLink('quote_no', 'Quote No.', $sort, $dir) !!}</th>
             <th>{!! sortLink('company', 'Company', $sort, $dir) !!}</th>
-            <th>Email</th>
-            <th>WhatsApp</th>
-            <th>Designation</th>
+            <th>{!! sortLink('email', 'Email', $sort, $dir) !!}</th>
+            <th>{!! sortLink('whatsapp', 'Phone / WhatsApp', $sort, $dir) !!}</th>
+            <th>{!! sortLink('priority', 'Priority', $sort, $dir) !!}</th>
             <th>{!! sortLink('status', 'Status', $sort, $dir) !!}</th>
-            <th>{!! sortLink('last_contacted_at', 'Last Contacted', $sort, $dir) !!}</th>
+            <th>{!! sortLink('quotation_date', 'Quotation Date', $sort, $dir) !!}</th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>
@@ -159,26 +175,63 @@ if (! function_exists('sortLink')) {
                 <div class="avatar-circle" style="background:{{ $contact->avatarColor() }};">{{ $contact->initials() }}</div>
               </div>
             </td>
-            <td><a href="{{ route('contacts.show', $contact) }}" class="fw-600 text-reset text-decoration-none">{{ $contact->name }}</a></td>
-            <td>{{ $contact->company ?: '—' }}</td>
-            <td>{{ $contact->email }}</td>
+            <td><a href="{{ route('contacts.show', $contact) }}" class="fw-600 text-reset text-decoration-none">{{ $contact->quote_no ?: '—' }}</a></td>
+            <td>{{ $contact->company ?: $contact->name }}</td>
+            <td>{{ $contact->email ?: '—' }}</td>
             <td>{{ $contact->whatsapp ?: '—' }}</td>
-            <td>{{ $contact->designation ?: '—' }}</td>
-            <td><span class="chip {{ \App\Models\Contact::statusChipClass($contact->status) }}"><i class="bi bi-circle-fill"></i>{{ \App\Models\Contact::statusOptions()[$contact->status] }}</span></td>
-            <td class="small text-muted-c">{{ $contact->last_contacted_at?->format('d M Y') ?? '—' }}</td>
+            <td>{{ $contact->priority ?: '—' }}</td>
+            <td>
+              @if ($contact->is_won)
+                <span class="chip chip-success"><i class="bi bi-trophy-fill"></i>Won</span>
+              @elseif ($contact->is_archived)
+                <span class="chip chip-neutral"><i class="bi bi-archive-fill"></i>Archived</span>
+              @else
+                <span class="chip {{ \App\Models\Contact::statusChipClass($contact->status) }}"><i class="bi bi-circle-fill"></i>{{ \App\Models\Contact::statusOptions()[$contact->status] }}</span>
+              @endif
+            </td>
+            <td class="small text-muted-c">{{ $contact->quotation_date?->format('d M Y') ?? '—' }}</td>
             <td>
               <div class="d-flex gap-1 justify-content-end">
                 <a href="{{ route('contacts.show', $contact) }}" class="btn-icon-sq" title="View" data-bs-toggle="tooltip"><i class="bi bi-eye"></i></a>
                 <button type="button" class="btn-icon-sq js-edit-contact"
-                  data-id="{{ $contact->id }}" data-name="{{ $contact->name }}" data-company="{{ $contact->company }}"
+                  data-id="{{ $contact->id }}" data-quote-no="{{ $contact->quote_no }}" data-quotation-date="{{ optional($contact->quotation_date)->format('Y-m-d') }}"
+                  data-name="{{ $contact->name }}" data-company="{{ $contact->company }}"
                   data-email="{{ $contact->email }}" data-whatsapp="{{ $contact->whatsapp }}" data-designation="{{ $contact->designation }}"
+                  data-sales-man="{{ $contact->sales_man }}" data-gst-number="{{ $contact->gst_number }}" data-transport="{{ $contact->transport }}"
+                  data-shipping-address="{{ $contact->shipping_address }}" data-stage="{{ $contact->stage }}" data-priority="{{ $contact->priority }}"
                   data-status="{{ $contact->status }}" data-notes="{{ $contact->notes }}"
-                  data-last-contacted="{{ optional($contact->last_contacted_at)->format('Y-m-d') }}"
                   title="Edit" data-bs-toggle="tooltip"><i class="bi bi-pencil"></i></button>
                 @if ($contact->whatsapp)
-                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $contact->whatsapp) }}" target="_blank" class="btn-icon-sq success" title="WhatsApp" data-bs-toggle="tooltip"><i class="bi bi-whatsapp"></i></a>
+                <a href="{{ route('contacts.whatsapp', $contact) }}" target="_blank" class="btn-icon-sq success" title="WhatsApp (uses your saved template)" data-bs-toggle="tooltip"><i class="bi bi-whatsapp"></i></a>
                 @endif
-                <a href="mailto:{{ $contact->email }}" class="btn-icon-sq" title="Email" data-bs-toggle="tooltip"><i class="bi bi-envelope"></i></a>
+                @if ($contact->email)
+                <a href="{{ route('gmail.index', ['search' => $contact->email]) }}" class="btn-icon-sq" title="Find in Gmail" data-bs-toggle="tooltip"><i class="bi bi-envelope-fill"></i></a>
+                @endif
+
+                @if ($contact->is_won)
+                <form method="POST" action="{{ route('contacts.unwon', $contact) }}">
+                  @csrf @method('PATCH')
+                  <button type="submit" class="btn-icon-sq" title="Revert from Won" data-bs-toggle="tooltip"><i class="bi bi-arrow-counterclockwise"></i></button>
+                </form>
+                @else
+                <form method="POST" action="{{ route('contacts.won', $contact) }}">
+                  @csrf @method('PATCH')
+                  <button type="submit" class="btn-icon-sq" title="Mark Won" data-bs-toggle="tooltip"><i class="bi bi-trophy"></i></button>
+                </form>
+                @endif
+
+                @if ($contact->is_archived)
+                <form method="POST" action="{{ route('contacts.unarchive', $contact) }}">
+                  @csrf @method('PATCH')
+                  <button type="submit" class="btn-icon-sq" title="Restore" data-bs-toggle="tooltip"><i class="bi bi-box-arrow-up"></i></button>
+                </form>
+                @else
+                <form method="POST" action="{{ route('contacts.archive', $contact) }}">
+                  @csrf @method('PATCH')
+                  <button type="submit" class="btn-icon-sq" title="Archive" data-bs-toggle="tooltip"><i class="bi bi-archive"></i></button>
+                </form>
+                @endif
+
                 <form method="POST" action="{{ route('contacts.destroy', $contact) }}" data-confirm="Delete {{ $contact->name }}? This cannot be undone.">
                   @csrf @method('DELETE')
                   <button type="submit" class="btn-icon-sq danger" title="Delete" data-bs-toggle="tooltip"><i class="bi bi-trash"></i></button>
@@ -190,7 +243,7 @@ if (! function_exists('sortLink')) {
           <tr><td colspan="9">
             <div class="empty-state">
               <div class="es-icon"><i class="bi bi-person-x"></i></div>
-              <h6>No contacts found</h6>
+              <h6>No leads found</h6>
               <p>Try adjusting your search or filters, or add a new contact.</p>
             </div>
           </td></tr>
@@ -215,7 +268,9 @@ if (! function_exists('sortLink')) {
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   function toggleSyncFields() {
-    var type = document.getElementById('syncSourceType').value;
+    var sel = document.getElementById('syncSourceType');
+    if (!sel) return;
+    var type = sel.value;
     document.getElementById('syncExcelField').style.display = type === 'excel_upload' ? '' : 'none';
     document.getElementById('syncSheetField').style.display = type === 'google_sheet' ? '' : 'none';
   }
@@ -226,14 +281,14 @@ document.addEventListener('DOMContentLoaded', function () {
     btn.addEventListener('click', function () {
       var form = document.getElementById('formEditContact');
       form.action = '{{ url('contacts') }}/' + btn.dataset.id;
-      form.querySelector('[name=name]').value = btn.dataset.name || '';
-      form.querySelector('[name=company]').value = btn.dataset.company || '';
-      form.querySelector('[name=email]').value = btn.dataset.email || '';
-      form.querySelector('[name=whatsapp]').value = btn.dataset.whatsapp || '';
-      form.querySelector('[name=designation]').value = btn.dataset.designation || '';
-      form.querySelector('[name=status]').value = btn.dataset.status || 'active';
-      form.querySelector('[name=notes]').value = btn.dataset.notes || '';
-      form.querySelector('[name=last_contacted_at]').value = btn.dataset.lastContacted || '';
+      var fields = ['quoteNo:quote_no', 'quotationDate:quotation_date', 'name:name', 'company:company', 'email:email',
+        'whatsapp:whatsapp', 'designation:designation', 'salesMan:sales_man', 'gstNumber:gst_number', 'transport:transport',
+        'shippingAddress:shipping_address', 'stage:stage', 'priority:priority', 'status:status', 'notes:notes'];
+      fields.forEach(function (pair) {
+        var parts = pair.split(':');
+        var input = form.querySelector('[name=' + parts[1] + ']');
+        if (input) input.value = btn.dataset[parts[0]] || '';
+      });
       new bootstrap.Modal(document.getElementById('modalEditContact')).show();
     });
   });

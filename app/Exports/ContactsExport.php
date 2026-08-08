@@ -10,20 +10,34 @@ class ContactsExport implements FromCollection, WithHeadings
 {
     public function collection()
     {
-        return Contact::orderBy('name')->get()->map(fn (Contact $c) => [
-            'Name' => $c->name,
-            'Company' => $c->company,
-            'Email' => $c->email,
-            'WhatsApp' => $c->whatsapp,
+        return Contact::orderBy('company')->get()->map(fn (Contact $c) => [
+            'Company Name' => $c->company,
+            'Date' => optional($c->quotation_date)->format('Y-m-d'),
+            'Phone No.' => $c->whatsapp,
+            'Mail' => $c->email,
+            'Sales Man' => $c->sales_man,
+            'Address' => $c->shipping_address,
+            'GST' => $c->gst_number,
+            'Transport' => $c->transport,
+            'Shipping Address' => $c->shipping_address,
+            'Stage' => $c->stage,
+            'Quote No.' => $c->quote_no,
+            'Priority' => $c->priority,
+            'Contact Person' => $c->name,
             'Designation' => $c->designation,
             'Status' => Contact::statusOptions()[$c->status] ?? $c->status,
-            'Last Contacted' => optional($c->last_contacted_at)->format('Y-m-d'),
+            'Won' => $c->is_won ? 'Yes' : 'No',
+            'Archived' => $c->is_archived ? 'Yes' : 'No',
             'Notes' => $c->notes,
         ]);
     }
 
     public function headings(): array
     {
-        return ['Name', 'Company', 'Email', 'WhatsApp', 'Designation', 'Status', 'Last Contacted', 'Notes'];
+        return [
+            'Company Name', 'Date', 'Phone No.', 'Mail', 'Sales Man', 'Address', 'GST', 'Transport',
+            'Shipping Address', 'Stage', 'Quote No.', 'Priority', 'Contact Person', 'Designation',
+            'Status', 'Won', 'Archived', 'Notes',
+        ];
     }
 }

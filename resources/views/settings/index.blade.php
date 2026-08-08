@@ -74,6 +74,21 @@
     </div>
   </div>
 
+  @if (auth()->user()->isAdmin())
+  {{-- Team Accounts --}}
+  <div class="col-lg-6">
+    <div class="card-c h-100">
+      <div class="card-c-body d-flex flex-column">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div class="settings-card-icon" style="background:var(--color-primary-light);color:var(--color-primary);"><i class="bi bi-people-fill"></i></div>
+          <h5 class="mb-0">Team Accounts</h5>
+        </div>
+        <p class="small text-muted-c">Add teammates, set who's an Admin vs a restricted User, and reset passwords.</p>
+        <a href="{{ route('users.index') }}" class="btn btn-outline-c btn-sm mt-auto align-self-start"><i class="bi bi-person-plus-fill me-1"></i>Manage Team Accounts</a>
+      </div>
+    </div>
+  </div>
+
   {{-- Gmail Integration --}}
   <div class="col-lg-6">
     <div class="card-c h-100">
@@ -205,27 +220,66 @@
   </div>
 
   {{-- WhatsApp Settings --}}
-  <div class="col-lg-6">
-    <div class="card-c h-100">
+  <div class="col-12">
+    <div class="card-c">
       <div class="card-c-body">
         <div class="d-flex align-items-center gap-2 mb-3">
           <div class="settings-card-icon" style="background:var(--color-whatsapp-light);color:var(--color-whatsapp);"><i class="bi bi-whatsapp"></i></div>
           <h5 class="mb-0">WhatsApp Settings</h5>
         </div>
-        <form method="POST" action="{{ route('settings.whatsapp') }}">
+        <form method="POST" action="{{ route('settings.whatsapp') }}" class="row g-3 mb-4 pb-4" style="border-bottom:1px solid var(--border-color);">
           @csrf @method('PUT')
-          <div class="mb-3"><label class="form-label">Sender Number</label><input type="text" name="whatsapp_sender_number" class="form-control" value="{{ $settings['whatsapp_sender_number'] }}" placeholder="+91 90000 12345"></div>
-          <div class="mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Sender Number</label>
+            <input type="text" name="whatsapp_sender_number" class="form-control" value="{{ $settings['whatsapp_sender_number'] }}" placeholder="+91 90000 12345">
+            <div class="small text-muted-c mt-1">
+              Informational only — for your own records. WhatsApp click-to-chat links (wa.me) always send from
+              whichever WhatsApp account is logged into the device/browser that clicks the button, so this field
+              can't change who a message is sent "from".
+            </div>
+          </div>
+          <div class="col-md-6">
             <label class="form-label">Default Template</label>
             <select class="form-select" name="whatsapp_default_template_id">
-              <option value="">— None —</option>
+              <option value="">— None (blank message) —</option>
               @foreach ($templates as $t)
                 <option value="{{ $t->id }}" {{ (string) $settings['whatsapp_default_template_id'] === (string) $t->id ? 'selected' : '' }}>{{ $t->name }}</option>
               @endforeach
             </select>
+            <div class="small text-muted-c mt-1">Used automatically by the WhatsApp button on every contact — no picker, one click.</div>
           </div>
-          <button type="submit" class="btn btn-primary-c btn-sm">Save Settings</button>
+          <div class="col-12"><button type="submit" class="btn btn-primary-c btn-sm">Save Settings</button></div>
         </form>
+
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div class="fw-600 small">Templates</div>
+          <button type="button" class="btn btn-outline-c btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddTemplate"><i class="bi bi-plus-lg me-1"></i>Add Template</button>
+        </div>
+        <div class="table-responsive-c">
+          <table class="table-c">
+            <thead><tr><th>Name</th><th>Message</th><th class="text-end">Actions</th></tr></thead>
+            <tbody>
+              @forelse ($templates as $t)
+              <tr>
+                <td class="fw-600" style="white-space:nowrap;">{{ $t->name }}</td>
+                <td class="small text-muted-c">{{ \Illuminate\Support\Str::limit($t->message, 90) }}</td>
+                <td>
+                  <div class="d-flex gap-1 justify-content-end">
+                    <button type="button" class="btn-icon-sq js-edit-template" data-id="{{ $t->id }}" data-name="{{ $t->name }}" data-message="{{ $t->message }}" title="Edit" data-bs-toggle="tooltip"><i class="bi bi-pencil"></i></button>
+                    <form method="POST" action="{{ route('whatsapp.destroy', $t) }}" data-confirm="Delete template '{{ $t->name }}'?">
+                      @csrf @method('DELETE')
+                      <button type="submit" class="btn-icon-sq danger" title="Delete" data-bs-toggle="tooltip"><i class="bi bi-trash"></i></button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              @empty
+              <tr><td colspan="3" class="text-center small text-muted-c py-3">No templates yet — add one above.</td></tr>
+              @endforelse
+            </tbody>
+          </table>
+        </div>
+        <p class="small text-muted-c mb-0">Placeholders: <code>{name}</code> <code>{company}</code> <code>{employee}</code> <code>{date}</code></p>
       </div>
     </div>
   </div>
@@ -275,9 +329,60 @@
       </div>
     </div>
   </div>
+  @endif
 </div>
 
+@if (auth()->user()->isAdmin())
 @include('settings._gmail_instructions_modal')
+
+@push('modals')
+<div class="modal fade" id="modalAddTemplate" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" action="{{ route('whatsapp.store') }}">
+        @csrf
+        <div class="modal-header">
+          <h5 class="modal-title">Add WhatsApp Template</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3"><label class="form-label">Name *</label><input type="text" name="name" class="form-control" required></div>
+          <div class="mb-2"><label class="form-label">Message *</label><textarea class="form-control" name="message" rows="5" required></textarea></div>
+          <p class="small text-muted-c mb-0">Placeholders: <code>{name}</code> <code>{company}</code> <code>{employee}</code> <code>{date}</code></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light-c" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary-c"><i class="bi bi-check2 me-1"></i>Save Template</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalEditTemplate" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" id="formEditTemplate">
+        @csrf @method('PUT')
+        <div class="modal-header">
+          <h5 class="modal-title">Edit WhatsApp Template</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3"><label class="form-label">Name *</label><input type="text" name="name" class="form-control" required></div>
+          <div class="mb-2"><label class="form-label">Message *</label><textarea class="form-control" name="message" rows="5" required></textarea></div>
+          <p class="small text-muted-c mb-0">Placeholders: <code>{name}</code> <code>{company}</code> <code>{employee}</code> <code>{date}</code></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light-c" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary-c"><i class="bi bi-check2 me-1"></i>Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+@endpush
+@endif
 @endsection
 
 @push('scripts')
@@ -290,6 +395,16 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   var sel = document.getElementById('settingsSyncSourceType');
   if (sel) { sel.addEventListener('change', toggleSyncFields); toggleSyncFields(); }
+
+  document.querySelectorAll('.js-edit-template').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var form = document.getElementById('formEditTemplate');
+      form.action = '{{ url('whatsapp') }}/' + btn.dataset.id;
+      form.querySelector('[name=name]').value = btn.dataset.name || '';
+      form.querySelector('[name=message]').value = btn.dataset.message || '';
+      new bootstrap.Modal(document.getElementById('modalEditTemplate')).show();
+    });
+  });
 });
 </script>
 @endpush

@@ -9,30 +9,31 @@ use Illuminate\Console\Command;
 class RecalculateStatuses extends Command
 {
     /**
-     * Active -> Follow-up after 7 days without contact, -> Inactive after 20 days.
-     * Manually set statuses still get re-evaluated daily against last_contacted_at,
-     * so the automation stays authoritative over time.
+     * Active -> Follow-up after 7 days from the quotation date, -> Inactive after 2 months.
+     * Manually set statuses still get re-evaluated daily, so the automation stays
+     * authoritative over time. Won/archived leads are frozen and skipped.
      *
      * @var string
      */
     protected $signature = 'contacts:recalculate-statuses';
 
-    protected $description = 'Recalculate contact statuses (Active / Follow-up / Inactive) from last_contacted_at';
+    protected $description = 'Recalculate lead statuses (Active / Follow-up / Inactive) from the quotation date';
 
     public function handle(): int
     {
         $changed = 0;
 
-        Contact::query()->chunkById(200, function ($contacts) use (&$changed) {
-            foreach ($contacts as $contact) {
-                $newStatus = Contact::computeStatusFromDate($contact->last_contacted_at);
+        Contact::query()->where('is_won', false)->where('is_archived', false)
+            ->chunkById(200, function ($contacts) use (&$changed) {
+                foreach ($contacts as $contact) {
+                    $newStatus = Contact::computeStatusFromDate($contact->quotation_date ?? $contact->last_contacted_at);
 
-                if ($newStatus !== $contact->status) {
-                    $contact->update(['status' => $newStatus]);
-                    $changed++;
+                    if ($newStatus !== $contact->status) {
+                        $contact->update(['status' => $newStatus]);
+                        $changed++;
+                    }
                 }
-            }
-        });
+            });
 
         if ($changed > 0) {
             Activity::log("Follow-up automation updated status for {$changed} contact(s)", 'bi-arrow-repeat', 'warning');

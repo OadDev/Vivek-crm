@@ -21,14 +21,16 @@
     <a href="{{ route('contacts.index') }}" class="sidebar-link {{ request()->routeIs('contacts.*') ? 'active' : '' }}">
       <i class="bi bi-person-lines-fill"></i><span>Contacts</span>
     </a>
-    <a href="{{ route('whatsapp.index') }}" class="sidebar-link {{ request()->routeIs('whatsapp.*') ? 'active' : '' }}">
-      <i class="bi bi-whatsapp"></i><span>WhatsApp Templates</span>
-    </a>
     <a href="{{ route('products.index') }}" class="sidebar-link {{ request()->routeIs('products.*') ? 'active' : '' }}">
       <i class="bi bi-box-seam-fill"></i><span>Product Master</span>
     </a>
 
     <div class="nav-section-label">Account</div>
+    @if (auth()->user()->isAdmin())
+    <a href="{{ route('users.index') }}" class="sidebar-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
+      <i class="bi bi-people-fill"></i><span>Team Accounts</span>
+    </a>
+    @endif
     <a href="{{ route('settings.index') }}" class="sidebar-link {{ request()->routeIs('settings.*') ? 'active' : '' }}">
       <i class="bi bi-gear-fill"></i><span>Settings</span>
     </a>

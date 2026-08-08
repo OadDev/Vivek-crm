@@ -7,19 +7,31 @@ use App\Imports\ContactsImport;
 use App\Models\Activity;
 use App\Models\Contact;
 use App\Models\ContactSyncSetting;
+use App\Models\Setting;
+use App\Models\WhatsappMessage;
 use App\Models\WhatsappTemplate;
 use App\Services\ContactSyncService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ContactController extends Controller
 {
-    protected const SORTABLE = ['name', 'company', 'status', 'last_contacted_at', 'created_at'];
+    protected const SORTABLE = ['name', 'company', 'quote_no', 'quotation_date', 'priority', 'status', 'email', 'whatsapp', 'last_contacted_at', 'created_at'];
 
     public function index(Request $request)
     {
         $query = Contact::query();
+
+        $view = in_array($request->input('view'), ['pipeline', 'won', 'archived', 'all'], true)
+            ? $request->input('view')
+            : 'pipeline';
+
+        match ($view) {
+            'won' => $query->won(),
+            'archived' => $query->archived(),
+            'all' => null,
+            default => $query->pipeline(),
+        };
 
         if ($request->filled('search')) {
             $search = $request->string('search');
@@ -27,7 +39,8 @@ class ContactController extends Controller
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('company', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('whatsapp', 'like', "%{$search}%");
+                    ->orWhere('whatsapp', 'like', "%{$search}%")
+                    ->orWhere('quote_no', 'like', "%{$search}%");
             });
         }
 
@@ -42,11 +55,11 @@ class ContactController extends Controller
         }
 
         if ($request->filled('date_from')) {
-            $query->whereDate('last_contacted_at', '>=', $request->input('date_from'));
+            $query->whereDate('quotation_date', '>=', $request->input('date_from'));
         }
 
         if ($request->filled('date_to')) {
-            $query->whereDate('last_contacted_at', '<=', $request->input('date_to'));
+            $query->whereDate('quotation_date', '<=', $request->input('date_to'));
         }
 
         if ($request->boolean('starred_only')) {
@@ -60,12 +73,19 @@ class ContactController extends Controller
 
         $syncSetting = ContactSyncSetting::current();
 
-        return view('contacts.index', compact('contacts', 'sort', 'dir', 'syncSetting'));
+        $counts = [
+            'pipeline' => Contact::query()->pipeline()->count(),
+            'won' => Contact::query()->won()->count(),
+            'archived' => Contact::query()->archived()->count(),
+        ];
+
+        return view('contacts.index', compact('contacts', 'sort', 'dir', 'syncSetting', 'view', 'counts'));
     }
 
     public function store(Request $request)
     {
         $data = $this->validated($request);
+        $data['name'] = $data['name'] ?: $data['company'];
 
         $contact = Contact::create($data + [
             'source' => 'manual',
@@ -87,6 +107,7 @@ class ContactController extends Controller
     public function update(Request $request, Contact $contact)
     {
         $data = $this->validated($request, $contact);
+        $data['name'] = $data['name'] ?: $data['company'];
         $contact->update($data);
 
         Activity::log("Contact <b>{$contact->name}</b> updated", 'bi-pencil-fill', 'primary', $contact);
@@ -109,6 +130,75 @@ class ContactController extends Controller
         $contact->update(['is_starred' => ! $contact->is_starred]);
 
         return redirect()->back();
+    }
+
+    public function archive(Contact $contact)
+    {
+        $contact->update(['is_archived' => true, 'archived_at' => now()]);
+
+        Activity::log("Lead <b>{$contact->name}</b> archived", 'bi-archive-fill', 'warning', $contact);
+
+        return redirect()->back()->with('success', 'Lead archived and removed from the pipeline.');
+    }
+
+    public function unarchive(Contact $contact)
+    {
+        $contact->update(['is_archived' => false, 'archived_at' => null]);
+
+        Activity::log("Lead <b>{$contact->name}</b> restored from archive", 'bi-archive', 'info', $contact);
+
+        return redirect()->back()->with('success', 'Lead restored to the pipeline.');
+    }
+
+    public function markWon(Contact $contact)
+    {
+        $contact->update(['is_won' => true, 'won_at' => now()]);
+
+        Activity::log("Quotation <b>{$contact->quote_no}</b> for <b>{$contact->name}</b> marked Won", 'bi-trophy-fill', 'success', $contact);
+
+        return redirect()->back()->with('success', 'Marked as Won.');
+    }
+
+    public function unmarkWon(Contact $contact)
+    {
+        $contact->update(['is_won' => false, 'won_at' => null]);
+
+        Activity::log("Quotation <b>{$contact->quote_no}</b> for <b>{$contact->name}</b> reverted from Won", 'bi-trophy', 'info', $contact);
+
+        return redirect()->back()->with('success', 'Reverted from Won.');
+    }
+
+    /**
+     * One-click WhatsApp: render the default template saved in Settings for
+     * this contact, log it, and hand off straight to wa.me — no picker.
+     */
+    public function whatsapp(Contact $contact)
+    {
+        if (! $contact->whatsapp) {
+            return redirect()->back()->with('error', 'This contact has no WhatsApp number.');
+        }
+
+        $templateId = Setting::get('whatsapp_default_template_id');
+        $template = $templateId ? WhatsappTemplate::find($templateId) : null;
+
+        $message = $template
+            ? $template->render(['name' => $contact->name, 'company' => $contact->company])
+            : '';
+
+        $whatsappMessage = WhatsappMessage::create([
+            'contact_id' => $contact->id,
+            'whatsapp_template_id' => $template?->id,
+            'recipient_name' => $contact->name,
+            'recipient_number' => $contact->whatsapp,
+            'message' => $message,
+            'sent_at' => now(),
+        ]);
+
+        $contact->update(['last_contacted_at' => now()]);
+
+        Activity::log("WhatsApp opened for <b>{$contact->name}</b>", 'bi-whatsapp', 'success', $contact);
+
+        return redirect()->away($whatsappMessage->waLink());
     }
 
     public function importForm()
@@ -175,11 +265,19 @@ class ContactController extends Controller
     protected function validated(Request $request, ?Contact $contact = null): array
     {
         return $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'company' => ['nullable', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:contacts,email'.($contact ? ','.$contact->id : '')],
+            'name' => ['nullable', 'string', 'max:255'],
+            'company' => ['required', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
             'whatsapp' => ['nullable', 'string', 'max:30'],
             'designation' => ['nullable', 'string', 'max:255'],
+            'quote_no' => ['nullable', 'string', 'max:100', 'unique:contacts,quote_no'.($contact ? ','.$contact->id : '')],
+            'quotation_date' => ['nullable', 'date'],
+            'sales_man' => ['nullable', 'string', 'max:255'],
+            'gst_number' => ['nullable', 'string', 'max:50'],
+            'transport' => ['nullable', 'string', 'max:255'],
+            'shipping_address' => ['nullable', 'string'],
+            'stage' => ['nullable', 'string', 'max:100'],
+            'priority' => ['nullable', 'string', 'max:50'],
             'status' => ['required', 'in:active,follow_up,inactive'],
             'last_contacted_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],

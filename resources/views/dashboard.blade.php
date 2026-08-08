@@ -44,12 +44,14 @@ $statCards = [
 </div>
 @php
 $actions = [
-  ['label' => 'Import Contacts', 'sub' => 'Bulk upload via Excel', 'icon' => 'bi-file-earmark-arrow-up-fill', 'color' => 'primary', 'url' => route('contacts.import.form')],
   ['label' => 'Open Gmail Inbox', 'sub' => 'View conversations', 'icon' => 'bi-envelope-open-fill', 'color' => 'info', 'url' => route('gmail.index')],
   ['label' => 'Add Contact', 'sub' => 'Create a new record', 'icon' => 'bi-person-plus-fill', 'color' => 'success', 'url' => route('contacts.index')],
   ['label' => 'Add Product', 'sub' => 'Expand your catalog', 'icon' => 'bi-box-seam-fill', 'color' => 'warning', 'url' => route('products.index')],
-  ['label' => 'Send WhatsApp', 'sub' => 'Use a saved template', 'icon' => 'bi-whatsapp', 'color' => 'success', 'url' => route('whatsapp.index')],
+  ['label' => 'WhatsApp a Lead', 'sub' => 'Uses your saved template', 'icon' => 'bi-whatsapp', 'color' => 'success', 'url' => route('contacts.index')],
 ];
+if (auth()->user()->isAdmin()) {
+    array_unshift($actions, ['label' => 'Import Contacts', 'sub' => 'Bulk upload via Excel', 'icon' => 'bi-file-earmark-arrow-up-fill', 'color' => 'primary', 'url' => route('contacts.import.form')]);
+}
 @endphp
 <div class="row g-3">
   @foreach ($actions as $a)

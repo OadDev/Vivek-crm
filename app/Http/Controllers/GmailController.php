@@ -41,6 +41,7 @@ class GmailController extends Controller
             $search = $request->string('search');
             $query->where(function ($q) use ($search) {
                 $q->where('sender_name', 'like', "%{$search}%")
+                    ->orWhere('sender_email', 'like', "%{$search}%")
                     ->orWhere('subject', 'like', "%{$search}%")
                     ->orWhere('preview', 'like', "%{$search}%");
             });

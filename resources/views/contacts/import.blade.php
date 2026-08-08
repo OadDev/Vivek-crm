@@ -21,7 +21,7 @@
           <i class="bi bi-file-earmark-spreadsheet-fill"></i>
         </div>
         <p class="fw-600 mb-1">Select your .xlsx, .xls or .csv file</p>
-        <p class="small text-muted-c">Recognized columns: Name, Company, Email, WhatsApp, Designation, Status (optional), Last Contacted / Date, Notes.</p>
+        <p class="small text-muted-c">Recognized columns: Company Name, Date, Phone No., Mail, Sales Man, Address, GST, Transport, Shipping Address, Stage, Quote No., Priority, Designation, Status (optional), Notes. One row per quotation — Quote No. (falling back to Mail) identifies each lead, so re-importing the same Quote No. updates that row instead of duplicating it.</p>
         <input type="file" name="file" class="form-control mt-2" accept=".xlsx,.xls,.csv" required>
         @error('file')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
       </div>

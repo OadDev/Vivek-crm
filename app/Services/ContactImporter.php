@@ -9,12 +9,20 @@ use Illuminate\Support\Str;
 class ContactImporter
 {
     protected const FIELD_ALIASES = [
-        'name' => ['name', 'fullname', 'contactname'],
+        'quoteno' => ['quoteno', 'quotationno', 'quotenumber', 'quotationnumber', 'quotenu'],
         'company' => ['company', 'companyname', 'organisation', 'organization'],
-        'email' => ['email', 'emailaddress', 'e-mail'],
-        'whatsapp' => ['whatsapp', 'whatsappnumber', 'phone', 'mobile', 'contactnumber', 'phonenumber'],
+        'name' => ['name', 'fullname', 'contactname'],
+        'email' => ['email', 'emailaddress', 'e-mail', 'mail'],
+        'whatsapp' => ['whatsapp', 'whatsappnumber', 'phone', 'mobile', 'contactnumber', 'phonenumber', 'phoneno'],
         'designation' => ['designation', 'title', 'role', 'jobtitle'],
-        'date' => ['date', 'lastcontacted', 'lastcontacteddate', 'lastinteraction', 'lastinteractiondate'],
+        'salesman' => ['salesman', 'salesperson', 'salesrep', 'salesexecutive'],
+        'address' => ['address'],
+        'gstnumber' => ['gst', 'gstno', 'gstnumber'],
+        'transport' => ['transport'],
+        'shippingaddress' => ['shippingaddress'],
+        'stage' => ['stage'],
+        'priority' => ['priority'],
+        'quotationdate' => ['date', 'quotationdate', 'quotedate', 'lastcontacted', 'lastcontacteddate', 'lastinteraction', 'lastinteractiondate'],
         'status' => ['status'],
         'notes' => ['notes', 'remark', 'remarks', 'note'],
     ];
@@ -33,35 +41,68 @@ class ContactImporter
         foreach ($rows as $row) {
             $mapped = $this->mapRow($row);
 
-            if (empty($mapped['email']) || empty($mapped['name'])) {
+            $company = $mapped['company'] ?? null;
+            $name = $mapped['name'] ?? $company;
+            $quoteNo = isset($mapped['quoteno']) ? (string) $mapped['quoteno'] : null;
+            $email = $mapped['email'] ?? null;
+
+            // Every row needs an identity (company or name) and a way to key
+            // off it (quote number, falling back to email for non-quotation
+            // sheets) — otherwise there's nothing to track it by.
+            if (empty($name) || (empty($quoteNo) && empty($email))) {
                 $skipped++;
 
                 continue;
             }
 
-            $lastContactedAt = $this->parseDate($mapped['date'] ?? null);
+            $quotationDate = $this->parseDate($mapped['quotationdate'] ?? null);
 
             $status = $this->normalizeStatus($mapped['status'] ?? null)
-                ?? Contact::computeStatusFromDate($lastContactedAt);
+                ?? Contact::computeStatusFromDate($quotationDate);
 
             $attributes = array_filter([
-                'name' => $mapped['name'],
-                'company' => $mapped['company'] ?? null,
+                'company' => $company,
                 'whatsapp' => $mapped['whatsapp'] ?? null,
                 'designation' => $mapped['designation'] ?? null,
+                'sales_man' => $mapped['salesman'] ?? null,
+                'gst_number' => $mapped['gstnumber'] ?? null,
+                'transport' => $mapped['transport'] ?? null,
+                'shipping_address' => $mapped['shippingaddress'] ?? $mapped['address'] ?? null,
+                'stage' => $mapped['stage'] ?? null,
+                'priority' => $mapped['priority'] ?? null,
                 'notes' => $mapped['notes'] ?? null,
             ], fn ($v) => $v !== null && $v !== '');
 
+            $attributes['name'] = $name;
             $attributes['status'] = $status;
             $attributes['source'] = $source;
 
-            if ($lastContactedAt) {
-                $attributes['last_contacted_at'] = $lastContactedAt;
+            if ($email) {
+                $attributes['email'] = $email;
             }
 
-            $existing = Contact::where('email', $mapped['email'])->first();
+            if ($quotationDate) {
+                $attributes['quotation_date'] = $quotationDate;
+            }
 
-            Contact::updateOrCreate(['email' => $mapped['email']], $attributes);
+            $key = $quoteNo ? ['quote_no' => $quoteNo] : ['email' => $email];
+
+            $existing = Contact::withTrashed()->where($key)->first();
+
+            // A lead the team explicitly removed (deleted or archived) must
+            // not come back just because it's still present in the source
+            // sheet on the next sync.
+            if ($existing && ($existing->trashed() || $existing->is_archived)) {
+                $skipped++;
+
+                continue;
+            }
+
+            if ($quoteNo) {
+                $attributes['quote_no'] = $quoteNo;
+            }
+
+            Contact::updateOrCreate($key, $attributes);
 
             $existing ? $updated++ : $created++;
         }

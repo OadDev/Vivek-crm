@@ -104,15 +104,25 @@ In production, point a single system cron entry at it:
   archive, and "Create Contact" from an unmatched sender. Backed by a real
   connected Gmail account once set up (see "Gmail Integration" above);
   falls back to local-only storage if nothing is connected.
-- **Contacts** — per-field custom filters (including WhatsApp and email),
-  date-range filter, sortable columns, star-to-pin-to-top, Active/Follow-up/
-  Inactive status automation, Excel import/export, and the auto-sync data
-  source described above.
-- **WhatsApp Templates** — `{name}` `{company}` `{employee}` `{date}`
-  placeholders, and a real `wa.me` click-to-chat deep link on send (no send
-  preview panel, by design).
+- **Contacts** — one row per quotation (Quote No.), per-field custom filters
+  (including WhatsApp and email), date-range filter, sortable columns
+  (including Email and Phone/WhatsApp), star-to-pin-to-top, Active/Follow-up/
+  Inactive status automation from the quotation date, manual Archive and
+  Won actions (Won/Archived leads get their own tabs and drop out of the
+  main pipeline), Excel import/export, and the auto-sync data source
+  described above. A lead you archive or delete is never re-added by a
+  later sync/import, even if it's still in the source sheet.
+- **WhatsApp** — one default template (managed from Settings, admin-only)
+  with `{name}` `{company}` `{employee}` `{date}` placeholders. The
+  WhatsApp button next to any contact opens a real `wa.me` click-to-chat
+  link pre-filled with that template — no picker, one click.
 - **Product Master** — Excel import/export, and a "Standard Copper
   Conductor Reference" quick-lookup popup (editable) next to the product
   table.
 - **Settings** — profile, password, theme, real Gmail OAuth connect/
-  disconnect/sync, WhatsApp defaults, system preferences.
+  disconnect/sync, WhatsApp template + default, system preferences, and
+  (admin-only) Team Accounts management.
+- **Access control** — Admin accounts get full access; User accounts get
+  day-to-day CRM access (contacts, WhatsApp, Gmail replies) but not
+  Settings integrations, Excel import, data-source config, or account
+  management.

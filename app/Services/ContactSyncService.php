@@ -77,7 +77,14 @@ class ContactSyncService
             throw new \RuntimeException('Could not fetch the Google Sheet (HTTP '.$response->status().'). Make sure it is shared as "Anyone with the link".');
         }
 
-        $lines = array_filter(preg_split('/\r\n|\r|\n/', $response->body()));
+        $contentType = $response->header('Content-Type');
+        $body = $response->body();
+
+        if (str_contains((string) $contentType, 'text/html') || stripos(ltrim($body), '<!DOCTYPE html') === 0 || stripos(ltrim($body), '<html') === 0) {
+            throw new \RuntimeException('Google returned a sign-in page instead of your sheet data. Open the sheet, click Share, and set general access to "Anyone with the link — Viewer", then try again.');
+        }
+
+        $lines = array_filter(preg_split('/\r\n|\r|\n/', $body));
         $rows = array_map('str_getcsv', $lines);
         $headers = array_map('trim', array_shift($rows) ?? []);
 
