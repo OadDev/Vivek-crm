@@ -32,12 +32,25 @@ class WhatsappMessage extends Model
     }
 
     /**
-     * Build a real, working WhatsApp click-to-chat deep link (wa.me).
+     * Universal fallback deep link (wa.me) — works everywhere, opens the
+     * WhatsApp Desktop/mobile app if installed, otherwise WhatsApp Web.
      */
     public function waLink(): string
     {
         $number = preg_replace('/[^0-9]/', '', $this->recipient_number);
 
         return 'https://wa.me/'.$number.'?text='.rawurlencode($this->message);
+    }
+
+    /**
+     * Faster native-app deep link. Only works if a WhatsApp app is
+     * registered as the whatsapp:// handler (e.g. WhatsApp Desktop on
+     * Windows) — use waLink() as a fallback when it doesn't open anything.
+     */
+    public function waAppLink(): string
+    {
+        $number = preg_replace('/[^0-9]/', '', $this->recipient_number);
+
+        return 'whatsapp://send?phone='.$number.'&text='.rawurlencode($this->message);
     }
 }

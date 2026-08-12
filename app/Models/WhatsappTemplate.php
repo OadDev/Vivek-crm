@@ -3,15 +3,26 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WhatsappTemplate extends Model
 {
-    protected $fillable = ['name', 'message'];
+    protected $fillable = ['user_id', 'name', 'message'];
 
     public function messages(): HasMany
     {
         return $this->hasMany(WhatsappMessage::class);
+    }
+
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function isShared(): bool
+    {
+        return $this->user_id === null;
     }
 
     /**

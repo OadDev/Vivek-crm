@@ -7,6 +7,7 @@ use App\Http\Controllers\GmailAuthController;
 use App\Http\Controllers\GmailController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReferenceTableController;
+use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SetupController;
 use App\Http\Controllers\UserController;
@@ -54,14 +55,14 @@ Route::middleware('auth')->group(function () {
     // Contacts
     Route::prefix('contacts')->name('contacts.')->group(function () {
         Route::get('/', [ContactController::class, 'index'])->name('index');
-        Route::post('/', [ContactController::class, 'store'])->name('store');
-        Route::get('/export', [ContactController::class, 'export'])->name('export');
+        Route::post('/sync-now', [ContactController::class, 'syncNow'])->name('sync-now');
 
         Route::middleware('admin')->group(function () {
+            Route::post('/', [ContactController::class, 'store'])->name('store');
+            Route::get('/export', [ContactController::class, 'export'])->name('export');
             Route::get('/import', [ContactController::class, 'importForm'])->name('import.form');
             Route::post('/import', [ContactController::class, 'import'])->name('import');
             Route::post('/sync-settings', [ContactController::class, 'syncSettingsUpdate'])->name('sync-settings');
-            Route::post('/sync-now', [ContactController::class, 'syncNow'])->name('sync-now');
         });
 
         Route::get('/{contact}', [ContactController::class, 'show'])->name('show');
@@ -73,10 +74,15 @@ Route::middleware('auth')->group(function () {
         Route::patch('/{contact}/won', [ContactController::class, 'markWon'])->name('won');
         Route::patch('/{contact}/unwon', [ContactController::class, 'unmarkWon'])->name('unwon');
         Route::get('/{contact}/whatsapp', [ContactController::class, 'whatsapp'])->name('whatsapp');
+        Route::post('/{contact}/remind', [ContactController::class, 'remind'])->name('remind');
     });
 
-    // WhatsApp Templates — managed from Settings, admin-only.
-    Route::prefix('whatsapp')->name('whatsapp.')->middleware('admin')->group(function () {
+    // Reminders
+    Route::patch('/reminders/{reminder}/done', [ReminderController::class, 'done'])->name('reminders.done');
+
+    // WhatsApp Templates — any user manages their own; only an admin can
+    // create/edit/delete the shared company ones (enforced in the controller).
+    Route::prefix('whatsapp')->name('whatsapp.')->group(function () {
         Route::post('/', [WhatsappTemplateController::class, 'store'])->name('store');
         Route::put('/{whatsappTemplate}', [WhatsappTemplateController::class, 'update'])->name('update');
         Route::delete('/{whatsappTemplate}', [WhatsappTemplateController::class, 'destroy'])->name('destroy');
@@ -103,14 +109,18 @@ Route::middleware('auth')->group(function () {
     Route::prefix('settings')->name('settings.')->group(function () {
         Route::get('/', [SettingsController::class, 'index'])->name('index');
         Route::put('/profile', [SettingsController::class, 'updateProfile'])->name('profile');
-        Route::put('/password', [SettingsController::class, 'updatePassword'])->name('password');
+        Route::put('/signature', [SettingsController::class, 'updateSignature'])->name('signature');
+        Route::put('/whatsapp-personal', [SettingsController::class, 'updateWhatsappPersonal'])->name('whatsapp-personal');
         Route::get('/gmail/callback', [GmailAuthController::class, 'callback'])->name('gmail.callback');
 
+        // Each user connects/manages their own Gmail account.
+        Route::get('/gmail/connect', [GmailAuthController::class, 'redirect'])->name('gmail.connect');
+        Route::post('/gmail/disconnect', [GmailAuthController::class, 'disconnect'])->name('gmail.disconnect');
+        Route::post('/gmail/sync-now', [GmailAuthController::class, 'syncNow'])->name('gmail.sync-now');
+
         Route::middleware('admin')->group(function () {
+            Route::put('/password', [SettingsController::class, 'updatePassword'])->name('password');
             Route::post('/gmail/credentials', [GmailAuthController::class, 'saveCredentials'])->name('gmail.credentials');
-            Route::get('/gmail/connect', [GmailAuthController::class, 'redirect'])->name('gmail.connect');
-            Route::post('/gmail/disconnect', [GmailAuthController::class, 'disconnect'])->name('gmail.disconnect');
-            Route::post('/gmail/sync-now', [GmailAuthController::class, 'syncNow'])->name('gmail.sync-now');
             Route::put('/whatsapp', [SettingsController::class, 'updateWhatsapp'])->name('whatsapp');
             Route::put('/preferences', [SettingsController::class, 'updatePreferences'])->name('preferences');
         });

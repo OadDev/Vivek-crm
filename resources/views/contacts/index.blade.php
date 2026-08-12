@@ -21,30 +21,33 @@ if (! function_exists('sortLink')) {
     <div class="page-subtitle">Every quotation and lead in one pipeline — one row per Quote No.</div>
   </div>
   <div class="d-flex gap-2 flex-wrap">
-    @auth
     @if (auth()->user()->isAdmin())
     <a href="{{ route('contacts.import.form') }}" class="btn btn-outline-c btn-sm"><i class="bi bi-file-earmark-arrow-up me-1"></i>Import Excel</a>
-    @endif
-    @endauth
     <a href="{{ route('contacts.export') }}" class="btn btn-outline-c btn-sm"><i class="bi bi-file-earmark-arrow-down me-1"></i>Export Excel</a>
     <button class="btn btn-primary-c btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddContact"><i class="bi bi-person-plus-fill me-1"></i>Add Contact</button>
+    @endif
   </div>
 </div>
 
-@if (auth()->user()->isAdmin())
-{{-- Auto-sync data source card --}}
+@if (! auth()->user()->isAdmin() && auth()->user()->sales_man)
+<div class="small text-muted-c mb-2"><i class="bi bi-funnel-fill me-1"></i>Showing only leads assigned to Sales Man "<b>{{ auth()->user()->sales_man }}</b>".</div>
+@endif
+
+{{-- Auto-sync data source card — status visible to everyone, Configure is admin-only --}}
 <div class="card-c mb-3">
   <div class="card-c-body">
     <div class="section-title-row">
       <h5><i class="bi bi-arrow-repeat me-1"></i>Auto-Sync Data Source</h5>
+      @if (auth()->user()->isAdmin())
       <button class="btn btn-light-c btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#syncSettingsPanel">Configure <i class="bi bi-chevron-down ms-1"></i></button>
+      @endif
     </div>
     <div class="d-flex flex-wrap gap-3 align-items-center small text-muted-c">
       <span class="chip {{ $syncSetting->is_enabled ? 'chip-success' : 'chip-neutral' }}"><i class="bi bi-circle-fill"></i>{{ $syncSetting->is_enabled ? 'Enabled' : 'Disabled' }}</span>
       <span>Source: <b class="text-reset">{{ $syncSetting->source_type === 'google_sheet' ? 'Google Sheet' : 'Excel Upload' }}</b></span>
       <span>Every <b class="text-reset">{{ $syncSetting->interval_minutes }}</b> min</span>
       @if ($syncSetting->last_synced_at)
-        <span>Last synced <b class="text-reset">{{ $syncSetting->last_synced_at->diffForHumans() }}</b></span>
+        <span>Last synced (IST) <b class="text-reset">{{ $syncSetting->last_synced_at->timezone('Asia/Kolkata')->format('d M, h:i A') }}</b></span>
         <span class="chip {{ $syncSetting->last_sync_status === 'success' ? 'chip-success' : 'chip-danger' }}">{{ ucfirst($syncSetting->last_sync_status ?? '') }}</span>
       @else
         <span>Never synced yet</span>
@@ -55,6 +58,7 @@ if (! function_exists('sortLink')) {
       </form>
     </div>
 
+    @if (auth()->user()->isAdmin())
     <div class="collapse mt-3" id="syncSettingsPanel">
       <form method="POST" action="{{ route('contacts.sync-settings') }}" enctype="multipart/form-data" class="row g-3 pt-3" style="border-top:1px solid var(--border-color);">
         @csrf
@@ -94,9 +98,9 @@ if (! function_exists('sortLink')) {
         </div>
       </form>
     </div>
+    @endif
   </div>
 </div>
-@endif
 
 <div class="card-c">
   <div class="card-c-body">
@@ -106,12 +110,13 @@ if (! function_exists('sortLink')) {
       <a href="{{ route('contacts.index', array_merge(request()->except(['view','page']), ['view' => 'archived'])) }}" class="filter-chip-btn {{ $view === 'archived' ? 'active' : '' }}"><i class="bi bi-archive-fill me-1"></i>Archived <span class="cnt">{{ $counts['archived'] }}</span></a>
     </div>
 
-    <form method="GET" action="{{ route('contacts.index') }}">
+    <form method="GET" action="{{ route('contacts.index') }}" id="contactsFilterForm">
       <input type="hidden" name="view" value="{{ $view }}">
       <div class="toolbar-c">
-        <div class="toolbar-search">
+        <div class="toolbar-search position-relative">
           <i class="bi bi-search"></i>
-          <input type="text" name="search" class="form-control form-control-sm" placeholder="Search name, company, email, WhatsApp, quote no..." value="{{ request('search') }}">
+          <input type="text" name="search" id="contactsSearchInput" class="form-control form-control-sm" placeholder="Search name, company, email, WhatsApp, quote no..." value="{{ request('search') }}" autocomplete="off" style="padding-right:26px;">
+          <button type="button" id="contactsSearchClear" title="Clear" style="display:{{ request('search') ? 'inline-flex' : 'none' }};position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--text-muted);align-items:center;"><i class="bi bi-x-circle-fill"></i></button>
         </div>
         <div class="filter-chip-group">
           <a href="{{ route('contacts.index', array_merge(request()->except(['filter_status','page']))) }}" class="filter-chip-btn {{ !request('filter_status') ? 'active' : '' }}">All</a>
@@ -120,6 +125,11 @@ if (! function_exists('sortLink')) {
           @endforeach
         </div>
         <button type="button" class="btn btn-light-c btn-sm" data-bs-toggle="collapse" data-bs-target="#advancedFiltersPanel"><i class="bi bi-sliders me-1"></i>Custom Filters</button>
+        <select name="per_page" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+          @foreach ([10,20,50,100] as $opt)
+            <option value="{{ $opt }}" {{ $perPage === $opt ? 'selected' : '' }}>{{ $opt }} / page</option>
+          @endforeach
+        </select>
         <div class="ms-auto small text-muted-c">{{ $contacts->total() }} lead(s)</div>
       </div>
 
@@ -162,83 +172,21 @@ if (! function_exists('sortLink')) {
           </tr>
         </thead>
         <tbody>
-          @forelse ($contacts as $contact)
-          <tr>
-            <td>
-              <div class="d-flex align-items-center gap-1">
-                <form method="POST" action="{{ route('contacts.star', $contact) }}">
-                  @csrf @method('PATCH')
-                  <button type="submit" class="btn btn-link p-0 border-0" style="color:{{ $contact->is_starred ? '#F5A623' : 'var(--text-muted)' }};font-size:16px;" title="{{ $contact->is_starred ? 'Unpin' : 'Pin to top' }}">
-                    <i class="bi {{ $contact->is_starred ? 'bi-star-fill' : 'bi-star' }}"></i>
-                  </button>
-                </form>
-                <div class="avatar-circle" style="background:{{ $contact->avatarColor() }};">{{ $contact->initials() }}</div>
-              </div>
-            </td>
-            <td><a href="{{ route('contacts.show', $contact) }}" class="fw-600 text-reset text-decoration-none">{{ $contact->quote_no ?: '—' }}</a></td>
-            <td>{{ $contact->company ?: $contact->name }}</td>
-            <td>{{ $contact->email ?: '—' }}</td>
-            <td>{{ $contact->whatsapp ?: '—' }}</td>
-            <td>{{ $contact->priority ?: '—' }}</td>
-            <td>
-              @if ($contact->is_won)
-                <span class="chip chip-success"><i class="bi bi-trophy-fill"></i>Won</span>
-              @elseif ($contact->is_archived)
-                <span class="chip chip-neutral"><i class="bi bi-archive-fill"></i>Archived</span>
-              @else
-                <span class="chip {{ \App\Models\Contact::statusChipClass($contact->status) }}"><i class="bi bi-circle-fill"></i>{{ \App\Models\Contact::statusOptions()[$contact->status] }}</span>
-              @endif
-            </td>
-            <td class="small text-muted-c">{{ $contact->quotation_date?->format('d M Y') ?? '—' }}</td>
-            <td>
-              <div class="d-flex gap-1 justify-content-end">
-                <a href="{{ route('contacts.show', $contact) }}" class="btn-icon-sq" title="View" data-bs-toggle="tooltip"><i class="bi bi-eye"></i></a>
-                <button type="button" class="btn-icon-sq js-edit-contact"
-                  data-id="{{ $contact->id }}" data-quote-no="{{ $contact->quote_no }}" data-quotation-date="{{ optional($contact->quotation_date)->format('Y-m-d') }}"
-                  data-name="{{ $contact->name }}" data-company="{{ $contact->company }}"
-                  data-email="{{ $contact->email }}" data-whatsapp="{{ $contact->whatsapp }}" data-designation="{{ $contact->designation }}"
-                  data-sales-man="{{ $contact->sales_man }}" data-gst-number="{{ $contact->gst_number }}" data-transport="{{ $contact->transport }}"
-                  data-shipping-address="{{ $contact->shipping_address }}" data-stage="{{ $contact->stage }}" data-priority="{{ $contact->priority }}"
-                  data-status="{{ $contact->status }}" data-notes="{{ $contact->notes }}"
-                  title="Edit" data-bs-toggle="tooltip"><i class="bi bi-pencil"></i></button>
-                @if ($contact->whatsapp)
-                <a href="{{ route('contacts.whatsapp', $contact) }}" target="_blank" class="btn-icon-sq success" title="WhatsApp (uses your saved template)" data-bs-toggle="tooltip"><i class="bi bi-whatsapp"></i></a>
-                @endif
-                @if ($contact->email)
-                <a href="{{ route('gmail.index', ['search' => $contact->email]) }}" class="btn-icon-sq" title="Find in Gmail" data-bs-toggle="tooltip"><i class="bi bi-envelope-fill"></i></a>
-                @endif
-
-                @if ($contact->is_won)
-                <form method="POST" action="{{ route('contacts.unwon', $contact) }}">
-                  @csrf @method('PATCH')
-                  <button type="submit" class="btn-icon-sq" title="Revert from Won" data-bs-toggle="tooltip"><i class="bi bi-arrow-counterclockwise"></i></button>
-                </form>
-                @else
-                <form method="POST" action="{{ route('contacts.won', $contact) }}">
-                  @csrf @method('PATCH')
-                  <button type="submit" class="btn-icon-sq" title="Mark Won" data-bs-toggle="tooltip"><i class="bi bi-trophy"></i></button>
-                </form>
-                @endif
-
-                @if ($contact->is_archived)
-                <form method="POST" action="{{ route('contacts.unarchive', $contact) }}">
-                  @csrf @method('PATCH')
-                  <button type="submit" class="btn-icon-sq" title="Restore" data-bs-toggle="tooltip"><i class="bi bi-box-arrow-up"></i></button>
-                </form>
-                @else
-                <form method="POST" action="{{ route('contacts.archive', $contact) }}">
-                  @csrf @method('PATCH')
-                  <button type="submit" class="btn-icon-sq" title="Archive" data-bs-toggle="tooltip"><i class="bi bi-archive"></i></button>
-                </form>
-                @endif
-
-                <form method="POST" action="{{ route('contacts.destroy', $contact) }}" data-confirm="Delete {{ $contact->name }}? This cannot be undone.">
-                  @csrf @method('DELETE')
-                  <button type="submit" class="btn-icon-sq danger" title="Delete" data-bs-toggle="tooltip"><i class="bi bi-trash"></i></button>
-                </form>
-              </div>
-            </td>
-          </tr>
+          @forelse ($contacts as $group)
+            @if ($group->count > 1)
+            <tr class="group-toggle-row" data-group-toggle="group-{{ $group->primary->id }}" style="cursor:pointer;">
+              <td colspan="9" class="small fw-600" style="background:var(--bg-surface-2);">
+                <i class="bi bi-chevron-right group-chevron me-1"></i>{{ $group->primary->company ?: $group->primary->name }}
+                <span class="chip chip-neutral ms-2">{{ $group->count }} quotations</span>
+              </td>
+            </tr>
+            @endif
+            @include('contacts._row', ['contact' => $group->primary])
+            @if ($group->count > 1)
+              @foreach ($group->others as $other)
+                @include('contacts._row', ['contact' => $other, 'nested' => true, 'groupClass' => 'group-'.$group->primary->id, 'hidden' => true])
+              @endforeach
+            @endif
           @empty
           <tr><td colspan="9">
             <div class="empty-state">
@@ -292,6 +240,36 @@ document.addEventListener('DOMContentLoaded', function () {
       new bootstrap.Modal(document.getElementById('modalEditContact')).show();
     });
   });
+
+  // Group expand/collapse
+  document.querySelectorAll('[data-group-toggle]').forEach(function (toggleRow) {
+    toggleRow.addEventListener('click', function () {
+      var cls = 'group-' + toggleRow.dataset.groupToggle.replace('group-', '');
+      var rows = document.querySelectorAll('.' + toggleRow.dataset.groupToggle);
+      var chevron = toggleRow.querySelector('.group-chevron');
+      var willShow = rows.length && rows[0].style.display === 'none';
+      rows.forEach(function (r) { r.style.display = willShow ? '' : 'none'; });
+      if (chevron) chevron.className = 'bi group-chevron me-1 ' + (willShow ? 'bi-chevron-down' : 'bi-chevron-right');
+    });
+  });
+
+  // Progressive search: auto-submit while typing (debounced) and on clear.
+  var searchInput = document.getElementById('contactsSearchInput');
+  var searchForm = document.getElementById('contactsFilterForm');
+  var clearBtn = document.getElementById('contactsSearchClear');
+  if (searchInput && searchForm) {
+    var debounceTimer;
+    searchInput.addEventListener('input', function () {
+      clearBtn.style.display = searchInput.value ? 'inline-flex' : 'none';
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(function () { searchForm.submit(); }, searchInput.value ? 450 : 0);
+    });
+    clearBtn.addEventListener('click', function () {
+      searchInput.value = '';
+      clearBtn.style.display = 'none';
+      searchForm.submit();
+    });
+  }
 });
 </script>
 @endpush

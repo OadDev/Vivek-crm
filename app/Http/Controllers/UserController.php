@@ -23,6 +23,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'role' => ['required', 'in:admin,user'],
+            'sales_man' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'min:8'],
         ]);
 
@@ -32,6 +33,7 @@ class UserController extends Controller
             'name' => $data['name'],
             'email' => $data['email'],
             'role' => $data['role'],
+            'sales_man' => $data['sales_man'] ?? null,
             'password' => Hash::make($password),
         ]);
 
@@ -49,6 +51,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
             'role' => ['required', 'in:admin,user'],
+            'sales_man' => ['nullable', 'string', 'max:255'],
         ]);
 
         if ($user->id === auth()->id() && $data['role'] !== User::ROLE_ADMIN) {

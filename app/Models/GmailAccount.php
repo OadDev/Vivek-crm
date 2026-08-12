@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class GmailAccount extends Model
 {
     protected $fillable = [
+        'user_id',
         'client_id',
         'client_secret',
         'google_id',
@@ -34,9 +36,28 @@ class GmailAccount extends Model
         ];
     }
 
-    public static function current(): self
+    public function user(): BelongsTo
     {
-        return static::firstOrCreate(['id' => 1]);
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Each user's own inbox connection (tokens, connected email).
+     */
+    public static function forUser(User $user): self
+    {
+        return static::firstOrCreate(['user_id' => $user->id]);
+    }
+
+    /**
+     * The one shared Google OAuth Client ID/Secret (a single Google Cloud
+     * app) that every user's "Connect Gmail" authorizes against. Admin-only
+     * to edit; every user's per-account connect/refresh reads it via
+     * resolvedClientId()/resolvedClientSecret() below.
+     */
+    public static function sharedClient(): self
+    {
+        return static::firstOrCreate(['user_id' => null]);
     }
 
     public function hasCredentials(): bool
@@ -45,18 +66,22 @@ class GmailAccount extends Model
     }
 
     /**
-     * Prefer credentials saved on this Settings page; fall back to .env
-     * (GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET) for anyone who set it up that
-     * way before this UI existed.
+     * Prefer the shared Client ID/Secret saved in Settings; fall back to
+     * .env (GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET) for anyone who set it up
+     * that way before this UI existed.
      */
     public function resolvedClientId(): ?string
     {
-        return $this->client_id ?: config('services.google.client_id');
+        $shared = $this->user_id === null ? $this : static::sharedClient();
+
+        return $shared->client_id ?: config('services.google.client_id');
     }
 
     public function resolvedClientSecret(): ?string
     {
-        return $this->client_secret ?: config('services.google.client_secret');
+        $shared = $this->user_id === null ? $this : static::sharedClient();
+
+        return $shared->client_secret ?: config('services.google.client_secret');
     }
 
     public function isConnected(): bool

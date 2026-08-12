@@ -19,6 +19,10 @@ class GmailAuthController extends Controller
         'https://www.googleapis.com/auth/gmail.send',
     ];
 
+    /**
+     * Admin-only: the one shared Google OAuth Client every user's personal
+     * Connect Gmail authorizes against.
+     */
     public function saveCredentials(Request $request)
     {
         $data = $request->validate([
@@ -26,16 +30,16 @@ class GmailAuthController extends Controller
             'client_secret' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $account = GmailAccount::current();
+        $shared = GmailAccount::sharedClient();
 
-        $account->update([
+        $shared->update([
             'client_id' => $data['client_id'],
             // Blank means "keep the existing secret" -- the field is never
             // re-populated with the real value once saved, so an empty
             // submit isn't the user intentionally clearing it.
             'client_secret' => $data['client_secret'] !== null && $data['client_secret'] !== ''
                 ? $data['client_secret']
-                : $account->client_secret,
+                : $shared->client_secret,
         ]);
 
         return redirect()->route('settings.index')->with('success', 'Google OAuth credentials saved.');
@@ -43,7 +47,7 @@ class GmailAuthController extends Controller
 
     protected function configureSocialite(): void
     {
-        $account = GmailAccount::current();
+        $account = GmailAccount::forUser(auth()->user());
 
         config([
             'services.google.client_id' => $account->resolvedClientId(),
@@ -54,8 +58,8 @@ class GmailAuthController extends Controller
 
     public function redirect()
     {
-        if (! GmailAccount::current()->hasCredentials()) {
-            return redirect()->route('settings.index')->with('error', 'Add your Google OAuth Client ID and Secret first (see the instructions button).');
+        if (! GmailAccount::forUser(auth()->user())->hasCredentials()) {
+            return redirect()->route('settings.index')->with('error', 'Ask your admin to add the Google OAuth Client ID and Secret first (see the instructions button).');
         }
 
         $this->configureSocialite();
@@ -85,7 +89,7 @@ class GmailAuthController extends Controller
             );
         }
 
-        GmailAccount::current()->update([
+        GmailAccount::forUser(auth()->user())->update([
             'google_id' => $googleUser->getId(),
             'email' => $googleUser->getEmail(),
             'name' => $googleUser->getName(),
@@ -100,21 +104,21 @@ class GmailAuthController extends Controller
 
     public function disconnect()
     {
-        GmailAccount::current()->disconnect();
+        GmailAccount::forUser(auth()->user())->disconnect();
 
         return redirect()->route('settings.index')->with('success', 'Gmail account disconnected.');
     }
 
     public function syncNow(GmailApiService $service)
     {
-        $account = GmailAccount::current();
+        $account = GmailAccount::forUser(auth()->user());
 
         if (! $account->isConnected()) {
             return redirect()->route('settings.index')->with('error', 'Connect a Gmail account first.');
         }
 
         try {
-            $result = $service->syncInbox();
+            $result = $service->syncInbox($account);
 
             return redirect()->route('settings.index')->with(
                 'success',

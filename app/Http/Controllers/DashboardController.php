@@ -7,6 +7,7 @@ use App\Models\Contact;
 use App\Models\EmailConversation;
 use App\Models\EmailMessage;
 use App\Models\Product;
+use App\Models\Reminder;
 use App\Models\WhatsappMessage;
 use Illuminate\Support\Carbon;
 
@@ -45,6 +46,14 @@ class DashboardController extends Controller
         $activities = Activity::latest()->limit(6)->get();
         $products = Product::latest()->limit(5)->get();
 
-        return view('dashboard', compact('stats', 'weekly', 'statusBreakdown', 'statusTotal', 'activities', 'products'));
+        $followUpsDue = Reminder::with('contact')
+            ->where('user_id', auth()->id())
+            ->where('is_done', false)
+            ->where('remind_at', '<=', now()->addDay())
+            ->orderBy('remind_at')
+            ->limit(8)
+            ->get();
+
+        return view('dashboard', compact('stats', 'weekly', 'statusBreakdown', 'statusTotal', 'activities', 'products', 'followUpsDue'));
     }
 }

@@ -7,16 +7,20 @@ use App\Imports\ContactsImport;
 use App\Models\Activity;
 use App\Models\Contact;
 use App\Models\ContactSyncSetting;
+use App\Models\Reminder;
 use App\Models\Setting;
 use App\Models\WhatsappMessage;
 use App\Models\WhatsappTemplate;
 use App\Services\ContactSyncService;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ContactController extends Controller
 {
     protected const SORTABLE = ['name', 'company', 'quote_no', 'quotation_date', 'priority', 'status', 'email', 'whatsapp', 'last_contacted_at', 'created_at'];
+
+    protected const PER_PAGE_OPTIONS = [10, 20, 50, 100];
 
     public function index(Request $request)
     {
@@ -32,6 +36,11 @@ class ContactController extends Controller
             'all' => null,
             default => $query->pipeline(),
         };
+
+        $user = auth()->user();
+        if (! $user->isAdmin() && $user->sales_man) {
+            $query->where('sales_man', $user->sales_man);
+        }
 
         if ($request->filled('search')) {
             $search = $request->string('search');
@@ -66,10 +75,38 @@ class ContactController extends Controller
             $query->where('is_starred', true);
         }
 
-        $sort = in_array($request->input('sort'), self::SORTABLE, true) ? $request->input('sort') : 'name';
-        $dir = $request->input('dir') === 'desc' ? 'desc' : 'asc';
+        $sort = in_array($request->input('sort'), self::SORTABLE, true) ? $request->input('sort') : 'quotation_date';
+        $dir = $request->input('dir') ?: ($request->filled('sort') ? 'asc' : 'desc');
+        $dir = $dir === 'desc' ? 'desc' : 'asc';
 
-        $contacts = $query->starredFirst()->orderBy($sort, $dir)->paginate(15)->withQueryString();
+        $perPage = in_array((int) $request->input('per_page'), self::PER_PAGE_OPTIONS, true)
+            ? (int) $request->input('per_page')
+            : 20;
+
+        // Same-name leads with multiple Quote Nos. are grouped into one row
+        // (most recent quotation shown, with an expandable panel for the
+        // rest) instead of paginating raw rows, so pagination happens on
+        // groups.
+        $all = $query->starredFirst()->orderBy($sort, $dir)->get();
+
+        $groups = $all->groupBy(fn (Contact $c) => $c->company ?: $c->name)->map(function ($items) {
+            $primary = $items->sortByDesc(fn (Contact $c) => optional($c->quotation_date)->timestamp ?? 0)->first();
+
+            return (object) [
+                'primary' => $primary,
+                'others' => $items->reject(fn (Contact $c) => $c->id === $primary->id)->values(),
+                'count' => $items->count(),
+            ];
+        })->values();
+
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $contacts = new LengthAwarePaginator(
+            $groups->slice(($page - 1) * $perPage, $perPage)->values(),
+            $groups->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         $syncSetting = ContactSyncSetting::current();
 
@@ -79,7 +116,7 @@ class ContactController extends Controller
             'archived' => Contact::query()->archived()->count(),
         ];
 
-        return view('contacts.index', compact('contacts', 'sort', 'dir', 'syncSetting', 'view', 'counts'));
+        return view('contacts.index', compact('contacts', 'sort', 'dir', 'perPage', 'syncSetting', 'view', 'counts'));
     }
 
     public function store(Request $request)
@@ -169,8 +206,9 @@ class ContactController extends Controller
     }
 
     /**
-     * One-click WhatsApp: render the default template saved in Settings for
-     * this contact, log it, and hand off straight to wa.me — no picker.
+     * One-click WhatsApp: render the sender's personal default template if
+     * they've set one, else the company default, and hand off straight to
+     * whatsapp:// (falling back to wa.me client-side) — no picker.
      */
     public function whatsapp(Contact $contact)
     {
@@ -178,7 +216,8 @@ class ContactController extends Controller
             return redirect()->back()->with('error', 'This contact has no WhatsApp number.');
         }
 
-        $templateId = Setting::get('whatsapp_default_template_id');
+        $user = auth()->user();
+        $templateId = $user->whatsapp_default_template_id ?: Setting::get('whatsapp_default_template_id');
         $template = $templateId ? WhatsappTemplate::find($templateId) : null;
 
         $message = $template
@@ -198,7 +237,26 @@ class ContactController extends Controller
 
         Activity::log("WhatsApp opened for <b>{$contact->name}</b>", 'bi-whatsapp', 'success', $contact);
 
-        return redirect()->away($whatsappMessage->waLink());
+        return view('contacts.whatsapp-redirect', [
+            'appLink' => $whatsappMessage->waAppLink(),
+            'webLink' => $whatsappMessage->waLink(),
+        ]);
+    }
+
+    public function remind(Request $request, Contact $contact)
+    {
+        $days = (int) $request->input('days');
+        abort_unless(in_array($days, [2, 7], true), 422);
+
+        Reminder::create([
+            'contact_id' => $contact->id,
+            'user_id' => auth()->id(),
+            'remind_at' => now()->addDays($days),
+        ]);
+
+        Activity::log("Reminder set for <b>{$contact->name}</b> in {$days} day(s)", 'bi-alarm-fill', 'warning', $contact);
+
+        return redirect()->back()->with('success', "You'll be reminded about {$contact->name} in {$days} day(s).");
     }
 
     public function importForm()

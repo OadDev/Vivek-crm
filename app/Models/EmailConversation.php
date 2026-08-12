@@ -10,6 +10,7 @@ class EmailConversation extends Model
 {
     protected $fillable = [
         'contact_id',
+        'gmail_account_id',
         'gmail_thread_id',
         'sender_name',
         'sender_email',

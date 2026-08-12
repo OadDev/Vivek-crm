@@ -8,12 +8,13 @@
       <div class="modal-body">
         <p class="small text-muted-c">
           Gmail Integration uses real Google sign-in (OAuth), not a simple API
-          key. You create one Google Cloud project and OAuth client, then paste
-          its Client ID/Secret into the <strong>Google OAuth Client</strong>
-          fields on this Settings page (they're stored encrypted in the
-          database, not in a file). The steps below are identical except for
-          the redirect URI, which differs between a live domain and a local
-          XAMPP install.
+          key. This is a two-step setup: an <strong>admin</strong> creates one
+          Google Cloud project/OAuth client and saves its Client ID/Secret
+          once (Settings → Google OAuth Client, stored encrypted in the
+          database, not in a file) — after that, <strong>every teammate</strong>
+          connects their own Gmail from their own Settings → My Gmail card.
+          The steps below are identical except for the redirect URI, which
+          differs between a live domain and a local XAMPP install.
         </p>
 
         <ol class="small ps-3 mb-4">
@@ -43,10 +44,12 @@
               <button class="btn btn-outline-c" type="button" data-copy-target="gmailRedirectLive"><i class="bi bi-clipboard"></i> Copy</button>
             </div>
             <p class="small text-muted-c mb-0">
-              Paste the Client ID and Client Secret into the <strong>Google
-              OAuth Client</strong> fields on this page and click
-              <strong>Save Credentials</strong>, then <strong>Connect Gmail</strong>.
-              No <code>.env</code> editing or redeploy needed.
+              Admin: paste the Client ID and Client Secret into the
+              <strong>Google OAuth Client</strong> card and click
+              <strong>Save Credentials</strong> — once. Then anyone,
+              including you, clicks <strong>Connect Gmail</strong> in their
+              own <strong>My Gmail</strong> card. No <code>.env</code>
+              editing or redeploy needed.
             </p>
           </div>
 
@@ -67,9 +70,9 @@
             <p class="small text-muted-c mb-0">
               Adjust the port if XAMPP's Apache isn't on the default port 80,
               e.g. <code>http://localhost:8080/settings/gmail/callback</code>
-              (and <code>APP_URL</code> to match). Then paste the same Client
-              ID/Secret into the fields on this page, save, and click
-              <strong>Connect Gmail</strong>.
+              (and <code>APP_URL</code> to match). Then (admin) save the same
+              Client ID/Secret in the Google OAuth Client card, and click
+              <strong>Connect Gmail</strong> in your own My Gmail card.
             </p>
           </div>
         </div>

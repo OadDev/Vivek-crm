@@ -40,19 +40,34 @@
 
     <div class="dropdown">
       <button class="icon-btn" data-bs-toggle="dropdown" title="Notifications">
-        <i class="bi bi-bell-fill"></i><span class="dot-badge"></span>
+        <i class="bi bi-bell-fill"></i>@if(($dueReminders ?? collect())->isNotEmpty())<span class="dot-badge"></span>@endif
       </button>
-      <div class="dropdown-menu dropdown-menu-end" style="width:320px;">
+      <div class="dropdown-menu dropdown-menu-end" style="width:340px;max-height:420px;overflow-y:auto;">
         <div class="d-flex justify-content-between align-items-center px-2 pb-2">
           <strong style="font-size:13.5px;">Notifications</strong>
         </div>
+        @forelse (($dueReminders ?? []) as $reminder)
+          <div class="notif-item d-flex align-items-start justify-content-between gap-2">
+            <a href="{{ $reminder->contact ? route('contacts.show', $reminder->contact) : '#' }}" class="text-reset text-decoration-none flex-fill">
+              <div class="notif-dot" style="background:var(--color-warning);"></div>
+              <div><div style="font-size:12.8px;font-weight:600;"><i class="bi bi-alarm-fill me-1"></i>Follow up: {{ $reminder->contact?->company ?? $reminder->contact?->name ?? 'Contact deleted' }}</div><div style="font-size:11.4px;color:var(--text-muted);">Due {{ $reminder->remind_at->diffForHumans() }}</div></div>
+            </a>
+            <form method="POST" action="{{ route('reminders.done', $reminder) }}">
+              @csrf @method('PATCH')
+              <button type="submit" class="btn-icon-sq" style="width:24px;height:24px;font-size:11px;" title="Dismiss"><i class="bi bi-check2"></i></button>
+            </form>
+          </div>
+        @empty
+        @endforelse
         @forelse ($globalRecentActivities ?? [] as $act)
           <div class="notif-item">
             <div class="notif-dot" style="background:var(--color-{{ $act->color }});"></div>
             <div><div style="font-size:12.8px;font-weight:600;">{!! $act->description !!}</div><div style="font-size:11.4px;color:var(--text-muted);">{{ $act->created_at->diffForHumans() }}</div></div>
           </div>
         @empty
-          <div class="px-2 py-3 small text-muted-c">No notifications yet.</div>
+          @if (($dueReminders ?? collect())->isEmpty())
+            <div class="px-2 py-3 small text-muted-c">No notifications yet.</div>
+          @endif
         @endforelse
       </div>
     </div>

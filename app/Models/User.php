@@ -4,6 +4,9 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -21,6 +24,26 @@ class User extends Authenticatable
         return $this->role === self::ROLE_ADMIN;
     }
 
+    public function gmailAccount(): HasOne
+    {
+        return $this->hasOne(GmailAccount::class);
+    }
+
+    public function whatsappTemplates(): HasMany
+    {
+        return $this->hasMany(WhatsappTemplate::class);
+    }
+
+    public function whatsappDefaultTemplate(): BelongsTo
+    {
+        return $this->belongsTo(WhatsappTemplate::class, 'whatsapp_default_template_id');
+    }
+
+    public function reminders(): HasMany
+    {
+        return $this->hasMany(Reminder::class);
+    }
+
     /**
      * The attributes that are mass assignable.
      *
@@ -32,6 +55,9 @@ class User extends Authenticatable
         'password',
         'role',
         'phone',
+        'sales_man',
+        'html_signature',
+        'whatsapp_default_template_id',
     ];
 
     /**

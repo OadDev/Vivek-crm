@@ -19,7 +19,12 @@ class GmailController extends Controller
         $folder = $request->input('folder', 'inbox');
         $filter = $request->input('filter', 'all');
 
-        $query = EmailConversation::query();
+        $myAccountId = GmailAccount::forUser(auth()->user())->id;
+
+        $query = EmailConversation::query()
+            ->where(function ($q) use ($myAccountId) {
+                $q->where('gmail_account_id', $myAccountId)->orWhereNull('gmail_account_id');
+            });
 
         if ($folder === 'starred') {
             $query->where('is_starred', true);
@@ -49,13 +54,17 @@ class GmailController extends Controller
 
         $conversations = $query->orderByDesc('last_message_at')->paginate(12)->withQueryString();
 
+        $mine = fn () => EmailConversation::query()->where(function ($q) use ($myAccountId) {
+            $q->where('gmail_account_id', $myAccountId)->orWhereNull('gmail_account_id');
+        });
+
         $folderCounts = [
-            'inbox' => EmailConversation::where('folder', 'inbox')->count(),
-            'starred' => EmailConversation::where('is_starred', true)->count(),
-            'sent' => EmailConversation::where('folder', 'sent')->count(),
-            'draft' => EmailConversation::where('folder', 'draft')->count(),
-            'archive' => EmailConversation::where('folder', 'archive')->count(),
-            'trash' => EmailConversation::where('folder', 'trash')->count(),
+            'inbox' => $mine()->where('folder', 'inbox')->count(),
+            'starred' => $mine()->where('is_starred', true)->count(),
+            'sent' => $mine()->where('folder', 'sent')->count(),
+            'draft' => $mine()->where('folder', 'draft')->count(),
+            'archive' => $mine()->where('folder', 'archive')->count(),
+            'trash' => $mine()->where('folder', 'trash')->count(),
         ];
 
         $selected = null;
@@ -92,12 +101,18 @@ class GmailController extends Controller
         $data = $request->validate(['body' => ['required', 'string']]);
         $bodyHtml = nl2br(e($data['body']));
 
+        if (auth()->user()->html_signature) {
+            $bodyHtml .= '<br><br>'.auth()->user()->html_signature;
+        }
+
+        $account = GmailAccount::forUser(auth()->user());
+
         $sentViaGmail = false;
         $sendError = null;
 
-        if (GmailAccount::current()->isConnected()) {
+        if ($account->isConnected()) {
             try {
-                $gmail->sendReply($conversation, $bodyHtml);
+                $gmail->sendReply($conversation, $bodyHtml, $account);
                 $sentViaGmail = true;
             } catch (Throwable $e) {
                 $sendError = $e->getMessage();
@@ -124,11 +139,11 @@ class GmailController extends Controller
 
         $status = $sentViaGmail
             ? 'success'
-            : (GmailAccount::current()->isConnected() ? 'error' : 'success');
+            : ($account->isConnected() ? 'error' : 'success');
 
         $message = $sentViaGmail
             ? 'Reply sent via Gmail.'
-            : (GmailAccount::current()->isConnected()
+            : ($account->isConnected()
                 ? 'Saved locally, but sending via Gmail failed: '.$sendError
                 : 'Reply saved locally (connect Gmail in Settings to send for real).');
 

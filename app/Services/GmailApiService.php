@@ -17,6 +17,12 @@ class GmailApiService
 
     protected const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
+    /** Messages fetched per page from Gmail's list endpoint. */
+    protected const PAGE_SIZE = 50;
+
+    /** Hard ceiling per sync run, so a very large mailbox can't run forever. */
+    protected const MAX_PER_RUN = 300;
+
     /**
      * Returns a valid access token for the connected account, refreshing it
      * first if it's expired (or about to be).
@@ -53,47 +59,80 @@ class GmailApiService
     }
 
     /**
-     * Pulls the most recent inbox messages from Gmail and upserts them into
-     * email_conversations / email_messages. Safe to call repeatedly --
-     * existing messages (matched by gmail_message_id) are left untouched.
+     * Pulls inbox messages from Gmail and upserts them into
+     * email_conversations / email_messages, tagged to this account. Safe to
+     * call repeatedly -- existing messages (matched by gmail_message_id) are
+     * left untouched. Paginates through up to MAX_PER_RUN messages per run
+     * (first sync backfills history; later syncs only see genuinely new mail
+     * once the dedup check catches up), so a single 25-message page can't
+     * silently cap the mailbox forever.
      */
-    public function syncInbox(int $maxResults = 25): array
+    public function syncInbox(GmailAccount $account, int $maxResults = self::MAX_PER_RUN): array
     {
-        $account = GmailAccount::current();
         $token = $this->accessToken($account);
-
-        $list = Http::withToken($token)
-            ->get(self::API_BASE.'/messages', [
-                'maxResults' => $maxResults,
-                'labelIds' => 'INBOX',
-            ]);
-
-        if (! $list->successful()) {
-            throw new RuntimeException('Could not list Gmail messages (HTTP '.$list->status().'): '.$list->body());
-        }
 
         $created = 0;
         $updated = 0;
         $skipped = 0;
+        $pageToken = null;
+        $fetched = 0;
+        $consecutiveKnown = 0;
 
-        foreach ($list->json('messages', []) as $ref) {
-            if (EmailMessage::where('gmail_message_id', $ref['id'])->exists()) {
-                $skipped++;
+        do {
+            $query = [
+                'maxResults' => self::PAGE_SIZE,
+                'labelIds' => 'INBOX',
+            ];
 
-                continue;
+            if ($pageToken) {
+                $query['pageToken'] = $pageToken;
             }
 
-            $full = Http::withToken($token)->get(self::API_BASE.'/messages/'.$ref['id'], ['format' => 'full']);
+            $list = Http::withToken($token)->get(self::API_BASE.'/messages', $query);
 
-            if (! $full->successful()) {
-                $skipped++;
-
-                continue;
+            if (! $list->successful()) {
+                throw new RuntimeException('Could not list Gmail messages (HTTP '.$list->status().'): '.$list->body());
             }
 
-            $this->storeMessage($full->json());
-            $created++;
-        }
+            $refs = $list->json('messages', []);
+
+            if (empty($refs)) {
+                break;
+            }
+
+            foreach ($refs as $ref) {
+                $fetched++;
+
+                if (EmailMessage::where('gmail_message_id', $ref['id'])->exists()) {
+                    $skipped++;
+                    $consecutiveKnown++;
+
+                    continue;
+                }
+
+                $consecutiveKnown = 0;
+
+                $full = Http::withToken($token)->get(self::API_BASE.'/messages/'.$ref['id'], ['format' => 'full']);
+
+                if (! $full->successful()) {
+                    $skipped++;
+
+                    continue;
+                }
+
+                $this->storeMessage($account, $full->json());
+                $created++;
+            }
+
+            // Once we've hit a solid run of already-known messages, the rest
+            // of the mailbox (older mail) is guaranteed already synced --
+            // stop paging instead of re-checking the whole history every run.
+            if ($consecutiveKnown >= self::PAGE_SIZE) {
+                break;
+            }
+
+            $pageToken = $list->json('nextPageToken');
+        } while ($pageToken && $fetched < $maxResults);
 
         $account->update([
             'last_synced_at' => now(),
@@ -104,7 +143,7 @@ class GmailApiService
         return ['created' => $created, 'updated' => $updated, 'skipped' => $skipped];
     }
 
-    protected function storeMessage(array $message): void
+    protected function storeMessage(GmailAccount $account, array $message): void
     {
         $headers = collect($message['payload']['headers'] ?? [])
             ->mapWithKeys(fn ($h) => [strtolower($h['name']) => $h['value']]);
@@ -126,6 +165,7 @@ class GmailApiService
         $conversation = EmailConversation::updateOrCreate(
             ['gmail_thread_id' => $message['threadId']],
             [
+                'gmail_account_id' => $account->id,
                 'contact_id' => $contact?->id,
                 'sender_name' => $senderName ?: $senderEmail,
                 'sender_email' => $senderEmail,
@@ -204,12 +244,13 @@ class GmailApiService
     }
 
     /**
-     * Sends a real reply through the connected Gmail account, threaded onto
-     * the original conversation via References/In-Reply-To when possible.
+     * Sends a real reply through the account that owns this conversation
+     * (falling back to the given account if the conversation predates
+     * per-user Gmail), threaded onto the original via References/In-Reply-To
+     * when possible.
      */
-    public function sendReply(EmailConversation $conversation, string $bodyHtml): void
+    public function sendReply(EmailConversation $conversation, string $bodyHtml, GmailAccount $account): void
     {
-        $account = GmailAccount::current();
         $token = $this->accessToken($account);
 
         $lastIncoming = $conversation->messages()->where('direction', 'incoming')->latest('sent_at')->first();

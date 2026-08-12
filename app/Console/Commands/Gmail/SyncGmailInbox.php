@@ -14,24 +14,26 @@ class SyncGmailInbox extends Command
      */
     protected $signature = 'gmail:sync';
 
-    protected $description = 'Pull the most recent inbox messages from the connected Gmail account';
+    protected $description = 'Pull new inbox messages for every connected Gmail account';
 
     public function handle(GmailApiService $service): int
     {
-        $account = GmailAccount::current();
+        $accounts = GmailAccount::whereNotNull('user_id')->whereNotNull('refresh_token')->get();
 
-        if (! $account->isConnected()) {
-            $this->comment('No Gmail account connected — skipping.');
+        if ($accounts->isEmpty()) {
+            $this->comment('No Gmail accounts connected — skipping.');
 
             return self::SUCCESS;
         }
 
-        try {
-            $result = $service->syncInbox();
-            $this->info("Synced Gmail inbox: {$result['created']} new, {$result['skipped']} skipped.");
-        } catch (Throwable $e) {
-            $account->update(['last_sync_status' => 'failed', 'last_sync_message' => $e->getMessage()]);
-            $this->warn('Gmail sync failed: '.$e->getMessage());
+        foreach ($accounts as $account) {
+            try {
+                $result = $service->syncInbox($account);
+                $this->info("[{$account->email}] Synced: {$result['created']} new, {$result['skipped']} skipped.");
+            } catch (Throwable $e) {
+                $account->update(['last_sync_status' => 'failed', 'last_sync_message' => $e->getMessage()]);
+                $this->warn("[{$account->email}] Gmail sync failed: ".$e->getMessage());
+            }
         }
 
         return self::SUCCESS;

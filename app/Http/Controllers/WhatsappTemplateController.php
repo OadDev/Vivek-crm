@@ -8,10 +8,19 @@ use Illuminate\Http\Request;
 
 class WhatsappTemplateController extends Controller
 {
+    /**
+     * Any user can create their own personal template. Only an admin can
+     * create a shared/company one (no user_id posted).
+     */
     public function store(Request $request)
     {
         $data = $this->validated($request);
-        $template = WhatsappTemplate::create($data);
+
+        $ownerId = auth()->user()->isAdmin() && $request->boolean('is_shared')
+            ? null
+            : auth()->id();
+
+        $template = WhatsappTemplate::create($data + ['user_id' => $ownerId]);
 
         Activity::log("WhatsApp template <b>{$template->name}</b> created", 'bi-whatsapp', 'success', $template);
 
@@ -20,6 +29,8 @@ class WhatsappTemplateController extends Controller
 
     public function update(Request $request, WhatsappTemplate $whatsappTemplate)
     {
+        $this->authorizeOwnership($whatsappTemplate);
+
         $data = $this->validated($request);
         $whatsappTemplate->update($data);
 
@@ -30,12 +41,24 @@ class WhatsappTemplateController extends Controller
 
     public function destroy(WhatsappTemplate $whatsappTemplate)
     {
+        $this->authorizeOwnership($whatsappTemplate);
+
         $name = $whatsappTemplate->name;
         $whatsappTemplate->delete();
 
         Activity::log("WhatsApp template <b>{$name}</b> deleted", 'bi-trash-fill', 'danger');
 
         return redirect()->route('settings.index')->with('success', 'Template deleted.');
+    }
+
+    protected function authorizeOwnership(WhatsappTemplate $template): void
+    {
+        $isOwnTemplate = $template->user_id === auth()->id();
+        $isSharedAndAdmin = $template->isShared() && auth()->user()->isAdmin();
+
+        if (! $isOwnTemplate && ! $isSharedAndAdmin) {
+            abort(403);
+        }
     }
 
     protected function validated(Request $request): array

@@ -7,7 +7,7 @@
 <div class="page-header">
   <div>
     <div class="page-title">Team Accounts</div>
-    <div class="page-subtitle">Admins get full access; Users get day-to-day CRM access only (no Settings, integrations, imports, or account management).</div>
+    <div class="page-subtitle">Admins get full access; Users get day-to-day CRM access only (view/edit contacts, WhatsApp, Gmail replies) — no Settings, imports/export, Add Contact, or account management. Set a Sales Man name to restrict a user to only their own leads.</div>
   </div>
   <button class="btn btn-primary-c btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddUser"><i class="bi bi-person-plus-fill me-1"></i>Add Account</button>
 </div>
@@ -17,7 +17,7 @@
     <div class="table-responsive-c">
       <table class="table-c">
         <thead>
-          <tr><th>Name</th><th>Email</th><th>Role</th><th class="text-end">Actions</th></tr>
+          <tr><th>Name</th><th>Email</th><th>Role</th><th>Sales Man</th><th class="text-end">Actions</th></tr>
         </thead>
         <tbody>
           @foreach ($users as $u)
@@ -25,10 +25,11 @@
             <td class="fw-600">{{ $u->name }}{{ $u->id === auth()->id() ? ' (you)' : '' }}</td>
             <td>{{ $u->email }}</td>
             <td><span class="chip {{ $u->isAdmin() ? 'chip-success' : 'chip-neutral' }}">{{ ucfirst($u->role) }}</span></td>
+            <td>{{ $u->sales_man ?: '—' }}</td>
             <td>
               <div class="d-flex gap-1 justify-content-end">
                 <button type="button" class="btn-icon-sq js-edit-user"
-                  data-id="{{ $u->id }}" data-name="{{ $u->name }}" data-email="{{ $u->email }}" data-role="{{ $u->role }}"
+                  data-id="{{ $u->id }}" data-name="{{ $u->name }}" data-email="{{ $u->email }}" data-role="{{ $u->role }}" data-sales-man="{{ $u->sales_man }}"
                   title="Edit" data-bs-toggle="tooltip"><i class="bi bi-pencil"></i></button>
                 <form method="POST" action="{{ route('users.reset-password', $u) }}" data-confirm="Reset the password for {{ $u->name }}? A new temporary password will be shown once.">
                   @csrf
@@ -73,6 +74,11 @@
               </select>
             </div>
             <div class="col-12">
+              <label class="form-label">Sales Man Name <span class="text-muted-c">(optional)</span></label>
+              <input type="text" name="sales_man" class="form-control" placeholder="Must match the Sales Man column in imported leads">
+              <div class="small text-muted-c mt-1">If set, this User only sees leads where Sales Man matches exactly. Leave blank to see all leads.</div>
+            </div>
+            <div class="col-12">
               <label class="form-label">Password</label>
               <input type="text" name="password" class="form-control" placeholder="Leave blank to auto-generate">
             </div>
@@ -107,6 +113,11 @@
                 <option value="admin">Admin (full access)</option>
               </select>
             </div>
+            <div class="col-12">
+              <label class="form-label">Sales Man Name <span class="text-muted-c">(optional)</span></label>
+              <input type="text" name="sales_man" class="form-control" placeholder="Must match the Sales Man column in imported leads">
+              <div class="small text-muted-c mt-1">If set, this User only sees leads where Sales Man matches exactly. Leave blank to see all leads.</div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -129,6 +140,7 @@ document.addEventListener('DOMContentLoaded', function () {
       form.querySelector('[name=name]').value = btn.dataset.name || '';
       form.querySelector('[name=email]').value = btn.dataset.email || '';
       form.querySelector('[name=role]').value = btn.dataset.role || 'user';
+      form.querySelector('[name=sales_man]').value = btn.dataset.salesMan || '';
       new bootstrap.Modal(document.getElementById('modalEditUser')).show();
     });
   });
