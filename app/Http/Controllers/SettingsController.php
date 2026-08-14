@@ -13,8 +13,8 @@ class SettingsController extends Controller
 {
     public function index()
     {
-        $companyTemplates = WhatsappTemplate::whereNull('user_id')->orderBy('name')->get();
-        $myTemplates = WhatsappTemplate::where('user_id', auth()->id())->orderBy('name')->get();
+        $companyTemplates = WhatsappTemplate::cachedCompany();
+        $myTemplates = WhatsappTemplate::cachedForUser(auth()->id());
         $syncSetting = ContactSyncSetting::current();
         $gmailAccount = GmailAccount::forUser(auth()->user());
         $gmailSharedClient = GmailAccount::sharedClient();

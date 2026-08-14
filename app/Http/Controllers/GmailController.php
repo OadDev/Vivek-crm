@@ -58,13 +58,16 @@ class GmailController extends Controller
             $q->where('gmail_account_id', $myAccountId)->orWhereNull('gmail_account_id');
         });
 
+        // One grouped count query instead of one COUNT(*) per folder.
+        $byFolder = $mine()->selectRaw('folder, count(*) as cnt')->groupBy('folder')->pluck('cnt', 'folder');
+
         $folderCounts = [
-            'inbox' => $mine()->where('folder', 'inbox')->count(),
+            'inbox' => $byFolder['inbox'] ?? 0,
             'starred' => $mine()->where('is_starred', true)->count(),
-            'sent' => $mine()->where('folder', 'sent')->count(),
-            'draft' => $mine()->where('folder', 'draft')->count(),
-            'archive' => $mine()->where('folder', 'archive')->count(),
-            'trash' => $mine()->where('folder', 'trash')->count(),
+            'sent' => $byFolder['sent'] ?? 0,
+            'draft' => $byFolder['draft'] ?? 0,
+            'archive' => $byFolder['archive'] ?? 0,
+            'trash' => $byFolder['trash'] ?? 0,
         ];
 
         $selected = null;

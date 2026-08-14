@@ -12,7 +12,7 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::orderBy('name')->get();
+        $users = User::orderBy('name')->get(['id', 'name', 'email', 'role', 'sales_man']);
 
         return view('users.index', compact('users'));
     }

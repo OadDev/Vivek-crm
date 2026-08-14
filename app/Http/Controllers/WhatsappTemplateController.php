@@ -21,6 +21,7 @@ class WhatsappTemplateController extends Controller
             : auth()->id();
 
         $template = WhatsappTemplate::create($data + ['user_id' => $ownerId]);
+        WhatsappTemplate::forgetCache($ownerId);
 
         Activity::log("WhatsApp template <b>{$template->name}</b> created", 'bi-whatsapp', 'success', $template);
 
@@ -33,6 +34,7 @@ class WhatsappTemplateController extends Controller
 
         $data = $this->validated($request);
         $whatsappTemplate->update($data);
+        WhatsappTemplate::forgetCache($whatsappTemplate->user_id);
 
         Activity::log("WhatsApp template <b>{$whatsappTemplate->name}</b> updated", 'bi-whatsapp', 'primary', $whatsappTemplate);
 
@@ -44,7 +46,9 @@ class WhatsappTemplateController extends Controller
         $this->authorizeOwnership($whatsappTemplate);
 
         $name = $whatsappTemplate->name;
+        $userId = $whatsappTemplate->user_id;
         $whatsappTemplate->delete();
+        WhatsappTemplate::forgetCache($userId);
 
         Activity::log("WhatsApp template <b>{$name}</b> deleted", 'bi-trash-fill', 'danger');
 

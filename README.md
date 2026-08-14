@@ -16,6 +16,33 @@ Pushes to `main` auto-deploy to Hostinger via GitHub Actions. See
 [DEPLOYMENT.md](DEPLOYMENT.md) for the one-time setup (SSH keys, server
 paths, GitHub secrets) and how the pipeline works.
 
+## Running from two machines against one shared database
+
+This app supports running from both a live Hostinger install and a local
+XAMPP install at the same time, both reading/writing the **same** Hostinger
+MySQL database — there is no separate local database.
+
+1. **Enable Remote MySQL on Hostinger** (hPanel → Databases → Remote MySQL)
+   and allow-list the IP address(es) the local machine connects from. This is
+   the one step that can't be done from code — without it, Hostinger's MySQL
+   simply refuses connections from outside its own server.
+2. **Use identical `DB_HOST`/`DB_PORT`/`DB_DATABASE`/`DB_USERNAME`/
+   `DB_PASSWORD` in both machines' `.env` files** — the Hostinger MySQL
+   host, not XAMPP's local `127.0.0.1` one. See the comments above the
+   `DB_*` block in `.env.example`.
+3. **Only run the Setup Wizard once**, on whichever machine sets the database
+   up first. On the second machine, since it's pointed at a database that
+   already has users in it, the app detects that and skips straight to the
+   login page — it will **not** show the wizard again or offer to load demo
+   data a second time.
+4. `CACHE_STORE=database` (the default in `.env.example`) is required for
+   both installs to see each other's cache invalidations immediately — a
+   file-based cache is per-machine and wouldn't pick up changes made on the
+   other install.
+5. If the local machine's internet connection drops, it can't reach the
+   Hostinger database — the app shows a plain "Unable to connect to the
+   Internet" page instead of a raw database error.
+
 ## Installation
 
 ```bash
@@ -39,9 +66,12 @@ Submitting writes your DB credentials into `.env`, runs migrations, seeds the
 copper standards reference table (and demo data if selected), creates your
 admin user, and logs you straight into the dashboard.
 
-> `.env` ships with `SESSION_DRIVER=file`, `CACHE_STORE=file` and
-> `QUEUE_CONNECTION=sync` on purpose — the app must be able to boot (and
-> serve the Setup Wizard itself) before any database tables exist.
+> `.env` ships with `SESSION_DRIVER=file` and `QUEUE_CONNECTION=sync` on
+> purpose — the app must be able to boot (and serve the Setup Wizard itself)
+> before any database tables exist. `CACHE_STORE=database` is safe alongside
+> that since nothing is cached until after the first migration runs — see
+> "Running from two machines against one shared database" below for why it's
+> `database` and not `file`.
 
 ## Gmail Integration (real OAuth)
 
@@ -126,3 +156,16 @@ In production, point a single system cron entry at it:
   day-to-day CRM access (contacts, WhatsApp, Gmail replies) but not
   Settings integrations, Excel import, data-source config, or account
   management.
+
+## Caching
+
+Rarely-changing/reference data is cached (`Cache::rememberForever`, forgotten
+on write — never a fixed TTL, so nothing goes stale on its own): the shared
+Gmail OAuth Client (`app/Models/GmailAccount.php`), company + personal
+WhatsApp templates (`app/Models/WhatsappTemplate.php`), and the Product
+Master copper reference tables (`app/Models/ReferenceTable.php`). Everything
+transactional — leads, email/WhatsApp history, activities, reminders,
+dashboard stats — is intentionally **never** cached, so it's always current.
+Each cached model exposes its own `cached...()` read method and
+`forget...Cache()`/`forgetCache()` invalidation method; every write path that
+touches that data calls the matching `forget` right after saving.

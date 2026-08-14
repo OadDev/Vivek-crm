@@ -42,13 +42,13 @@ class GmailAuthController extends Controller
                 : $shared->client_secret,
         ]);
 
+        GmailAccount::forgetSharedClientCache();
+
         return redirect()->route('settings.index')->with('success', 'Google OAuth credentials saved.');
     }
 
-    protected function configureSocialite(): void
+    protected function configureSocialite(GmailAccount $account): void
     {
-        $account = GmailAccount::forUser(auth()->user());
-
         config([
             'services.google.client_id' => $account->resolvedClientId(),
             'services.google.client_secret' => $account->resolvedClientSecret(),
@@ -58,11 +58,13 @@ class GmailAuthController extends Controller
 
     public function redirect()
     {
-        if (! GmailAccount::forUser(auth()->user())->hasCredentials()) {
+        $account = GmailAccount::forUser(auth()->user());
+
+        if (! $account->hasCredentials()) {
             return redirect()->route('settings.index')->with('error', 'Ask your admin to add the Google OAuth Client ID and Secret first (see the instructions button).');
         }
 
-        $this->configureSocialite();
+        $this->configureSocialite($account);
 
         return Socialite::driver('google')
             ->scopes(self::SCOPES)
@@ -72,7 +74,9 @@ class GmailAuthController extends Controller
 
     public function callback()
     {
-        $this->configureSocialite();
+        $account = GmailAccount::forUser(auth()->user());
+
+        $this->configureSocialite($account);
 
         try {
             $googleUser = Socialite::driver('google')->user();
@@ -89,7 +93,7 @@ class GmailAuthController extends Controller
             );
         }
 
-        GmailAccount::forUser(auth()->user())->update([
+        $account->update([
             'google_id' => $googleUser->getId(),
             'email' => $googleUser->getEmail(),
             'name' => $googleUser->getName(),

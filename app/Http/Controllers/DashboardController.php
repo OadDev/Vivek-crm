@@ -24,12 +24,22 @@ class DashboardController extends Controller
             'totalProducts' => Product::count(),
         ];
 
-        $weekly = collect(range(6, 0))->map(function ($daysAgo) {
-            $date = today()->subDays($daysAgo);
-            $emails = EmailMessage::whereDate('sent_at', $date)->count();
-            $whatsapp = WhatsappMessage::whereDate('sent_at', $date)->count();
+        // One grouped-by-day query per model instead of 2 queries x 7 days.
+        $rangeStart = today()->subDays(6)->startOfDay();
+        $rangeEnd = today()->endOfDay();
 
-            return ['label' => $date->format('D'), 'value' => $emails + $whatsapp];
+        $emailsByDay = EmailMessage::whereBetween('sent_at', [$rangeStart, $rangeEnd])
+            ->selectRaw('DATE(sent_at) as d, count(*) as c')->groupBy('d')->pluck('c', 'd');
+
+        $whatsappByDay = WhatsappMessage::whereBetween('sent_at', [$rangeStart, $rangeEnd])
+            ->selectRaw('DATE(sent_at) as d, count(*) as c')->groupBy('d')->pluck('c', 'd');
+
+        $weekly = collect(range(6, 0))->map(function ($daysAgo) use ($emailsByDay, $whatsappByDay) {
+            $date = today()->subDays($daysAgo);
+            $key = $date->format('Y-m-d');
+            $value = ($emailsByDay[$key] ?? 0) + ($whatsappByDay[$key] ?? 0);
+
+            return ['label' => $date->format('D'), 'value' => $value];
         });
 
         $maxWeekly = max(1, $weekly->max('value'));

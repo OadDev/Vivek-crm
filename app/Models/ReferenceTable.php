@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class ReferenceTable extends Model
 {
@@ -14,6 +16,24 @@ class ReferenceTable extends Model
             'headers' => 'array',
             'rows' => 'array',
         ];
+    }
+
+    /**
+     * The "Standard Copper Conductor Reference" popup data on Product
+     * Master — near-static reference data, read on every products page
+     * load. Cached until an admin edits/adds/removes a table.
+     */
+    public static function cachedCopper(): Collection
+    {
+        return Cache::rememberForever(
+            'reference_tables:copper',
+            fn () => static::where('category', 'copper')->orderBy('sort_order')->get()
+        );
+    }
+
+    public static function forgetCopperCache(): void
+    {
+        Cache::forget('reference_tables:copper');
     }
 
     /**

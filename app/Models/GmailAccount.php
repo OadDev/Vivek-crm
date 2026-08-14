@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
 
 class GmailAccount extends Model
 {
@@ -53,11 +54,22 @@ class GmailAccount extends Model
      * The one shared Google OAuth Client ID/Secret (a single Google Cloud
      * app) that every user's "Connect Gmail" authorizes against. Admin-only
      * to edit; every user's per-account connect/refresh reads it via
-     * resolvedClientId()/resolvedClientSecret() below.
+     * resolvedClientId()/resolvedClientSecret() below. Cached since it's
+     * read on every Gmail connect/token-refresh across every user, and only
+     * ever changes when an admin saves new credentials (see
+     * forgetSharedClientCache()).
      */
     public static function sharedClient(): self
     {
-        return static::firstOrCreate(['user_id' => null]);
+        return Cache::rememberForever(
+            'gmail:shared_client',
+            fn () => static::firstOrCreate(['user_id' => null])
+        );
+    }
+
+    public static function forgetSharedClientCache(): void
+    {
+        Cache::forget('gmail:shared_client');
     }
 
     public function hasCredentials(): bool

@@ -10,7 +10,11 @@ class ContactsExport implements FromCollection, WithHeadings
 {
     public function collection()
     {
-        return Contact::orderBy('company')->get()->map(fn (Contact $c) => [
+        return Contact::orderBy('company')->get([
+            'company', 'quotation_date', 'whatsapp', 'email', 'sales_man', 'shipping_address',
+            'gst_number', 'transport', 'stage', 'quote_no', 'priority', 'name', 'designation',
+            'status', 'is_won', 'is_archived', 'notes',
+        ])->map(fn (Contact $c) => [
             'Company Name' => $c->company,
             'Date' => optional($c->quotation_date)->format('Y-m-d'),
             'Phone No.' => $c->whatsapp,

@@ -86,8 +86,12 @@ class ContactController extends Controller
         // Same-name leads with multiple Quote Nos. are grouped into one row
         // (most recent quotation shown, with an expandable panel for the
         // rest) instead of paginating raw rows, so pagination happens on
-        // groups.
-        $all = $query->starredFirst()->orderBy($sort, $dir)->get();
+        // groups. Trimmed to the columns the list view actually renders.
+        $all = $query->starredFirst()->orderBy($sort, $dir)->get([
+            'id', 'quote_no', 'quotation_date', 'name', 'company', 'email', 'whatsapp',
+            'designation', 'sales_man', 'gst_number', 'transport', 'shipping_address',
+            'stage', 'priority', 'status', 'is_starred', 'is_archived', 'is_won', 'notes',
+        ]);
 
         $groups = $all->groupBy(fn (Contact $c) => $c->company ?: $c->name)->map(function ($items) {
             $primary = $items->sortByDesc(fn (Contact $c) => optional($c->quotation_date)->timestamp ?? 0)->first();

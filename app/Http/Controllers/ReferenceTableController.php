@@ -33,6 +33,7 @@ class ReferenceTableController extends Controller
             'rows' => $rows,
             'sort_order' => ReferenceTable::max('sort_order') + 1,
         ]);
+        ReferenceTable::forgetCopperCache();
 
         return redirect()->route('products.index')->with('success', 'Reference table added.');
     }
@@ -62,6 +63,7 @@ class ReferenceTableController extends Controller
         }
 
         $referenceTable->update($update);
+        ReferenceTable::forgetCopperCache();
 
         return redirect()->route('products.index')->with('success', 'Reference table updated.');
     }
@@ -69,6 +71,7 @@ class ReferenceTableController extends Controller
     public function destroy(ReferenceTable $referenceTable)
     {
         $referenceTable->delete();
+        ReferenceTable::forgetCopperCache();
 
         return redirect()->route('products.index')->with('success', 'Reference table removed.');
     }

@@ -30,7 +30,7 @@ class ProductController extends Controller
         }
 
         $products = $query->orderBy('code')->paginate(15)->withQueryString();
-        $referenceTables = ReferenceTable::where('category', 'copper')->orderBy('sort_order')->get();
+        $referenceTables = ReferenceTable::cachedCopper();
 
         return view('products.index', compact('products', 'referenceTables'));
     }
