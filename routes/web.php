@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DataSheetController;
 use App\Http\Controllers\GmailAuthController;
 use App\Http\Controllers\GmailController;
 use App\Http\Controllers\ProductController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SetupController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\WeightCalculatorController;
 use App\Http\Controllers\WhatsappTemplateController;
 use Illuminate\Support\Facades\Route;
 
@@ -103,6 +105,23 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [ReferenceTableController::class, 'store'])->name('store');
         Route::put('/{referenceTable}', [ReferenceTableController::class, 'update'])->name('update');
         Route::delete('/{referenceTable}', [ReferenceTableController::class, 'destroy'])->name('destroy');
+    });
+
+    // Weight Calculator
+    Route::get('/weight-calculator', [WeightCalculatorController::class, 'index'])->name('weight-calculator.index');
+
+    // Data Sheets — generic imported/synced reference data (courier lists,
+    // datasheets, etc.). Manual sync only, no scheduled command.
+    Route::prefix('data-sheets')->name('data-sheets.')->group(function () {
+        Route::get('/', [DataSheetController::class, 'index'])->name('index');
+        Route::get('/{dataSheet}', [DataSheetController::class, 'show'])->name('show');
+        Route::post('/{dataSheet}/sync-now', [DataSheetController::class, 'syncNow'])->name('sync-now');
+
+        Route::middleware('admin')->group(function () {
+            Route::post('/', [DataSheetController::class, 'store'])->name('store');
+            Route::put('/{dataSheet}', [DataSheetController::class, 'update'])->name('update');
+            Route::delete('/{dataSheet}', [DataSheetController::class, 'destroy'])->name('destroy');
+        });
     });
 
     // Settings

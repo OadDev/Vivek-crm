@@ -24,6 +24,12 @@
     <a href="{{ route('products.index') }}" class="sidebar-link {{ request()->routeIs('products.*') ? 'active' : '' }}">
       <i class="bi bi-box-seam-fill"></i><span>Product Master</span>
     </a>
+    <a href="{{ route('weight-calculator.index') }}" class="sidebar-link {{ request()->routeIs('weight-calculator.*') ? 'active' : '' }}">
+      <i class="bi bi-calculator-fill"></i><span>Weight Calculator</span>
+    </a>
+    <a href="{{ route('data-sheets.index') }}" class="sidebar-link {{ request()->routeIs('data-sheets.*') ? 'active' : '' }}">
+      <i class="bi bi-database-fill"></i><span>Data Sheets</span>
+    </a>
 
     <div class="nav-section-label">Account</div>
     @if (auth()->user()->isAdmin())
