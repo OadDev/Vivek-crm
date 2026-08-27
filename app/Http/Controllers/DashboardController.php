@@ -56,10 +56,12 @@ class DashboardController extends Controller
         $activities = Activity::latest()->limit(6)->get();
         $products = Product::latest()->limit(5)->get();
 
+        // Every pending reminder, soonest first — not just ones due within
+        // the next day, so a freshly-set 7-day reminder is still visible
+        // here right away instead of the block looking empty/hidden.
         $followUpsDue = Reminder::with('contact')
             ->where('user_id', auth()->id())
             ->where('is_done', false)
-            ->where('remind_at', '<=', now()->addDay())
             ->orderBy('remind_at')
             ->limit(8)
             ->get();

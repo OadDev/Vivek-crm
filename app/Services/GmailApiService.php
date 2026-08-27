@@ -260,9 +260,13 @@ class GmailApiService
 
         $headers = [
             'To: '.$conversation->sender_email,
-            'From: '.$account->email,
+            // No From header: Gmail's API always sends as the authenticated
+            // account regardless, and a From that doesn't exactly match a
+            // verified send-as address on that account (stale/blank email,
+            // Workspace alias, etc.) makes Gmail reject the whole send.
             'Subject: '.$subject,
-            'Content-Type: text/html; charset=UTF-8',
+            'Content-Type: text/html; charset="UTF-8"',
+            'Content-Transfer-Encoding: 8bit',
             'MIME-Version: 1.0',
         ];
 
@@ -275,7 +279,12 @@ class GmailApiService
 
         $payload = ['raw' => $this->base64UrlEncode($raw)];
 
-        if ($conversation->gmail_thread_id) {
+        // A threadId only works with the account that owns that thread --
+        // passing one that belongs to a different mailbox makes Gmail
+        // reject the send outright ("Invalid thread ID" / "Precondition
+        // check failed"). Only send it when we know it's safe.
+        if ($conversation->gmail_thread_id
+            && (! $conversation->gmail_account_id || $conversation->gmail_account_id === $account->id)) {
             $payload['threadId'] = $conversation->gmail_thread_id;
         }
 

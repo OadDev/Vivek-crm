@@ -58,6 +58,9 @@ class User extends Authenticatable
         'sales_man',
         'html_signature',
         'whatsapp_default_template_id',
+        'quick_reply_f1',
+        'quick_reply_f2',
+        'quick_reply_f3',
     ];
 
     /**

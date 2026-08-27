@@ -111,6 +111,29 @@
     </div>
   </div>
 
+  {{-- Gmail Quick Replies — everyone --}}
+  <div class="col-lg-6">
+    <div class="card-c h-100">
+      <div class="card-c-body">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div class="settings-card-icon" style="background:var(--color-success-light);color:var(--color-success);"><i class="bi bi-lightning-charge-fill"></i></div>
+          <h5 class="mb-0">Gmail Quick Replies</h5>
+        </div>
+        <div class="small text-muted-c mb-3">Save up to three canned replies. Each shows as an F1/F2/F3 button on every email in the Gmail Inbox — clicking one sends it immediately, no extra steps.</div>
+        <form method="POST" action="{{ route('settings.quick-replies') }}">
+          @csrf @method('PUT')
+          <label class="form-label">F1</label>
+          <textarea class="form-control mb-2" name="quick_reply_f1" rows="2" placeholder="e.g. Thank you for reaching out, we'll get back to you shortly.">{{ auth()->user()->quick_reply_f1 }}</textarea>
+          <label class="form-label">F2</label>
+          <textarea class="form-control mb-2" name="quick_reply_f2" rows="2" placeholder="e.g. Could you share more details about your requirement?">{{ auth()->user()->quick_reply_f2 }}</textarea>
+          <label class="form-label">F3</label>
+          <textarea class="form-control mb-2" name="quick_reply_f3" rows="2" placeholder="e.g. Following up on this — please let us know your thoughts.">{{ auth()->user()->quick_reply_f3 }}</textarea>
+          <button type="submit" class="btn btn-primary-c btn-sm mt-1">Save Quick Replies</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   @if (auth()->user()->isAdmin())
   {{-- Team Accounts --}}
   <div class="col-lg-6">

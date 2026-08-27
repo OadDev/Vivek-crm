@@ -42,6 +42,11 @@ class ContactController extends Controller
             $query->where('sales_man', $user->sales_man);
         }
 
+        // Scoped by view + role only (no search/other filters yet) so the
+        // status-tab counts reflect "how many are in this pipeline" rather
+        // than shrinking to match whatever the user is currently typing.
+        $statusScopeQuery = clone $query;
+
         if ($request->filled('search')) {
             $search = $request->string('search');
             $query->where(function ($q) use ($search) {
@@ -120,7 +125,14 @@ class ContactController extends Controller
             'archived' => Contact::query()->archived()->count(),
         ];
 
-        return view('contacts.index', compact('contacts', 'sort', 'dir', 'perPage', 'syncSetting', 'view', 'counts'));
+        $statusCounts = (clone $statusScopeQuery)->selectRaw('status, count(*) as cnt')->groupBy('status')->pluck('cnt', 'status');
+        $counts['all_statuses'] = (clone $statusScopeQuery)->count();
+
+        if ($request->ajax()) {
+            return view('contacts._table', compact('contacts', 'sort', 'dir', 'perPage'));
+        }
+
+        return view('contacts.index', compact('contacts', 'sort', 'dir', 'perPage', 'syncSetting', 'view', 'counts', 'statusCounts'));
     }
 
     public function store(Request $request)

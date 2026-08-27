@@ -26,13 +26,19 @@
 
   <div class="gmail-list-pane">
     <div class="gmail-list-toolbar">
-      <form method="GET" action="{{ route('gmail.index') }}" class="mb-2">
-        <input type="hidden" name="folder" value="{{ $folder }}">
-        <div class="position-relative">
-          <i class="bi bi-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);"></i>
-          <input type="text" name="search" class="form-control form-control-sm" style="padding-left:32px;" placeholder="Search mail..." value="{{ request('search') }}">
-        </div>
-      </form>
+      <div class="d-flex gap-2 align-items-center mb-2">
+        <form method="GET" action="{{ route('gmail.index') }}" class="flex-fill">
+          <input type="hidden" name="folder" value="{{ $folder }}">
+          <div class="position-relative">
+            <i class="bi bi-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);"></i>
+            <input type="text" name="search" class="form-control form-control-sm" style="padding-left:32px;" placeholder="Search mail..." value="{{ request('search') }}">
+          </div>
+        </form>
+        <form method="POST" action="{{ route('settings.gmail.sync-now') }}">
+          @csrf
+          <button type="submit" class="btn btn-outline-c btn-sm" title="Sync Now" data-bs-toggle="tooltip"><i class="bi bi-arrow-repeat"></i></button>
+        </form>
+      </div>
       <div class="filter-chip-group">
         @foreach (['all' => 'All', 'unread' => 'Unread', 'read' => 'Read', 'starred' => 'Starred', 'archived' => 'Archived'] as $key => $label)
           <a href="{{ route('gmail.index', ['folder' => $folder, 'filter' => $key, 'search' => request('search')]) }}" class="filter-chip-btn {{ $filter === $key ? 'active' : '' }}">{{ $label }}</a>
@@ -40,6 +46,13 @@
       </div>
     </div>
     <div class="gmail-list-scroll">
+      @php
+        $quickReplies = [
+          'F1' => auth()->user()->quick_reply_f1,
+          'F2' => auth()->user()->quick_reply_f2,
+          'F3' => auth()->user()->quick_reply_f3,
+        ];
+      @endphp
       @forelse ($conversations as $conv)
         <div class="conv-item {{ !$conv->is_read ? 'unread' : '' }} {{ $selected && $selected->id === $conv->id ? 'selected' : '' }}">
           @if (!$conv->is_read)<span class="unread-dot"></span>@endif
@@ -57,9 +70,20 @@
               <div class="conv-preview">{{ $conv->preview }}</div>
             </div>
           </a>
-          <a href="{{ route('gmail.star.get', $conv) }}" class="conv-star {{ $conv->is_starred ? 'active' : '' }}" style="align-self:flex-start;margin-top:2px;">
-            <i class="bi {{ $conv->is_starred ? 'bi-star-fill' : 'bi-star' }}"></i>
-          </a>
+          <div class="d-flex align-items-center gap-1" style="align-self:flex-start;margin-top:2px;">
+            @foreach ($quickReplies as $slot => $body)
+              @if ($body)
+              <form method="POST" action="{{ route('gmail.reply', $conv) }}" data-quick-reply>
+                @csrf
+                <input type="hidden" name="body" value="{{ $body }}">
+                <button type="submit" class="btn btn-outline-c btn-sm py-0 px-1" style="font-size:10.5px;" title="Send quick reply {{ $slot }}" data-bs-toggle="tooltip">{{ $slot }}</button>
+              </form>
+              @endif
+            @endforeach
+            <a href="{{ route('gmail.star.get', $conv) }}" class="conv-star {{ $conv->is_starred ? 'active' : '' }}">
+              <i class="bi {{ $conv->is_starred ? 'bi-star-fill' : 'bi-star' }}"></i>
+            </a>
+          </div>
         </div>
       @empty
         <div class="empty-state">

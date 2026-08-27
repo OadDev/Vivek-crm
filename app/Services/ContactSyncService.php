@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Activity;
 use App\Models\ContactSyncSetting;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use Throwable;
@@ -47,6 +48,12 @@ class ContactSyncService
                 'last_sync_status' => 'failed',
                 'last_sync_message' => $e->getMessage(),
             ]);
+
+            // Scheduled (non-forced) runs happen unattended every minute --
+            // without this, a persistently failing sync (bad sheet URL,
+            // revoked sharing) is only visible as a small status chip on
+            // the Contacts page that nobody may be watching.
+            Log::error('Contacts auto-sync failed: '.$e->getMessage());
 
             return ['success' => false, 'message' => $e->getMessage()];
         }

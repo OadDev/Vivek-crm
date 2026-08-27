@@ -111,6 +111,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/profile', [SettingsController::class, 'updateProfile'])->name('profile');
         Route::put('/signature', [SettingsController::class, 'updateSignature'])->name('signature');
         Route::put('/whatsapp-personal', [SettingsController::class, 'updateWhatsappPersonal'])->name('whatsapp-personal');
+        Route::put('/quick-replies', [SettingsController::class, 'updateQuickReplies'])->name('quick-replies');
         Route::get('/gmail/callback', [GmailAuthController::class, 'callback'])->name('gmail.callback');
 
         // Each user connects/manages their own Gmail account.

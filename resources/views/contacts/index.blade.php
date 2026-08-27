@@ -119,17 +119,12 @@ if (! function_exists('sortLink')) {
           <button type="button" id="contactsSearchClear" title="Clear" style="display:{{ request('search') ? 'inline-flex' : 'none' }};position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--text-muted);align-items:center;"><i class="bi bi-x-circle-fill"></i></button>
         </div>
         <div class="filter-chip-group">
-          <a href="{{ route('contacts.index', array_merge(request()->except(['filter_status','page']))) }}" class="filter-chip-btn {{ !request('filter_status') ? 'active' : '' }}">All</a>
+          <a href="{{ route('contacts.index', array_merge(request()->except(['filter_status','page']))) }}" class="filter-chip-btn {{ !request('filter_status') ? 'active' : '' }}">All <span class="cnt">{{ $counts['all_statuses'] }}</span></a>
           @foreach (\App\Models\Contact::statusOptions() as $key => $label)
-            <a href="{{ route('contacts.index', array_merge(request()->except('page'), ['filter_status' => $key])) }}" class="filter-chip-btn {{ request('filter_status') === $key ? 'active' : '' }}">{{ $label }}</a>
+            <a href="{{ route('contacts.index', array_merge(request()->except('page'), ['filter_status' => $key])) }}" class="filter-chip-btn {{ request('filter_status') === $key ? 'active' : '' }}">{{ $label }} <span class="cnt">{{ $statusCounts[$key] ?? 0 }}</span></a>
           @endforeach
         </div>
         <button type="button" class="btn btn-light-c btn-sm" data-bs-toggle="collapse" data-bs-target="#advancedFiltersPanel"><i class="bi bi-sliders me-1"></i>Custom Filters</button>
-        <select name="per_page" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
-          @foreach ([10,20,50,100] as $opt)
-            <option value="{{ $opt }}" {{ $perPage === $opt ? 'selected' : '' }}>{{ $opt }} / page</option>
-          @endforeach
-        </select>
         <div class="ms-auto small text-muted-c">{{ $contacts->total() }} lead(s)</div>
       </div>
 
@@ -156,53 +151,8 @@ if (! function_exists('sortLink')) {
       </div>
     </form>
 
-    <div class="table-responsive-c">
-      <table class="table-c">
-        <thead>
-          <tr>
-            <th></th>
-            <th>{!! sortLink('quote_no', 'Quote No.', $sort, $dir) !!}</th>
-            <th>{!! sortLink('company', 'Company', $sort, $dir) !!}</th>
-            <th>{!! sortLink('email', 'Email', $sort, $dir) !!}</th>
-            <th>{!! sortLink('whatsapp', 'Phone / WhatsApp', $sort, $dir) !!}</th>
-            <th>{!! sortLink('priority', 'Priority', $sort, $dir) !!}</th>
-            <th>{!! sortLink('status', 'Status', $sort, $dir) !!}</th>
-            <th>{!! sortLink('quotation_date', 'Quotation Date', $sort, $dir) !!}</th>
-            <th class="text-end">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @forelse ($contacts as $group)
-            @if ($group->count > 1)
-            <tr class="group-toggle-row" data-group-toggle="group-{{ $group->primary->id }}" style="cursor:pointer;">
-              <td colspan="9" class="small fw-600" style="background:var(--bg-surface-2);">
-                <i class="bi bi-chevron-right group-chevron me-1"></i>{{ $group->primary->company ?: $group->primary->name }}
-                <span class="chip chip-neutral ms-2">{{ $group->count }} quotations</span>
-              </td>
-            </tr>
-            @endif
-            @include('contacts._row', ['contact' => $group->primary])
-            @if ($group->count > 1)
-              @foreach ($group->others as $other)
-                @include('contacts._row', ['contact' => $other, 'nested' => true, 'groupClass' => 'group-'.$group->primary->id, 'hidden' => true])
-              @endforeach
-            @endif
-          @empty
-          <tr><td colspan="9">
-            <div class="empty-state">
-              <div class="es-icon"><i class="bi bi-person-x"></i></div>
-              <h6>No leads found</h6>
-              <p>Try adjusting your search or filters, or add a new contact.</p>
-            </div>
-          </td></tr>
-          @endforelse
-        </tbody>
-      </table>
-    </div>
-
-    <div class="pagination-c">
-      <span class="p-info">Showing {{ $contacts->firstItem() ?? 0 }}–{{ $contacts->lastItem() ?? 0 }} of {{ $contacts->total() }}</span>
-      {{ $contacts->onEachSide(1)->links('vendor.pagination.crm') }}
+    <div id="contactsTableWrap">
+      @include('contacts._table')
     </div>
   </div>
 </div>
@@ -214,6 +164,23 @@ if (! function_exists('sortLink')) {
 
 @push('scripts')
 <script>
+(function () {
+  // Per-page choice persists across visits (localStorage) -- on a fresh
+  // navigation with no explicit per_page in the URL, redirect once to the
+  // last-remembered size instead of always resetting to the 20 default.
+  var PP_KEY = 'contacts_per_page';
+  var url = new URL(window.location.href);
+  if (url.searchParams.has('per_page')) {
+    localStorage.setItem(PP_KEY, url.searchParams.get('per_page'));
+  } else {
+    var saved = localStorage.getItem(PP_KEY);
+    if (saved && saved !== '20') {
+      url.searchParams.set('per_page', saved);
+      window.location.replace(url.toString());
+    }
+  }
+})();
+
 document.addEventListener('DOMContentLoaded', function () {
   function toggleSyncFields() {
     var sel = document.getElementById('syncSourceType');
@@ -225,49 +192,96 @@ document.addEventListener('DOMContentLoaded', function () {
   var sel = document.getElementById('syncSourceType');
   if (sel) { sel.addEventListener('change', toggleSyncFields); toggleSyncFields(); }
 
-  document.querySelectorAll('.js-edit-contact').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var form = document.getElementById('formEditContact');
-      form.action = '{{ url('contacts') }}/' + btn.dataset.id;
-      var fields = ['quoteNo:quote_no', 'quotationDate:quotation_date', 'name:name', 'company:company', 'email:email',
-        'whatsapp:whatsapp', 'designation:designation', 'salesMan:sales_man', 'gstNumber:gst_number', 'transport:transport',
-        'shippingAddress:shipping_address', 'stage:stage', 'priority:priority', 'status:status', 'notes:notes'];
-      fields.forEach(function (pair) {
-        var parts = pair.split(':');
-        var input = form.querySelector('[name=' + parts[1] + ']');
-        if (input) input.value = btn.dataset[parts[0]] || '';
-      });
-      new bootstrap.Modal(document.getElementById('modalEditContact')).show();
-    });
-  });
-
-  // Group expand/collapse
-  document.querySelectorAll('[data-group-toggle]').forEach(function (toggleRow) {
-    toggleRow.addEventListener('click', function () {
-      var cls = 'group-' + toggleRow.dataset.groupToggle.replace('group-', '');
-      var rows = document.querySelectorAll('.' + toggleRow.dataset.groupToggle);
-      var chevron = toggleRow.querySelector('.group-chevron');
-      var willShow = rows.length && rows[0].style.display === 'none';
-      rows.forEach(function (r) { r.style.display = willShow ? '' : 'none'; });
-      if (chevron) chevron.className = 'bi group-chevron me-1 ' + (willShow ? 'bi-chevron-down' : 'bi-chevron-right');
-    });
-  });
-
-  // Progressive search: auto-submit while typing (debounced) and on clear.
+  var tableWrap = document.getElementById('contactsTableWrap');
   var searchInput = document.getElementById('contactsSearchInput');
-  var searchForm = document.getElementById('contactsFilterForm');
   var clearBtn = document.getElementById('contactsSearchClear');
-  if (searchInput && searchForm) {
+
+  function openEditModal(btn) {
+    var form = document.getElementById('formEditContact');
+    form.action = '{{ url('contacts') }}/' + btn.dataset.id;
+    var fields = ['quoteNo:quote_no', 'quotationDate:quotation_date', 'name:name', 'company:company', 'email:email',
+      'whatsapp:whatsapp', 'designation:designation', 'salesMan:sales_man', 'gstNumber:gst_number', 'transport:transport',
+      'shippingAddress:shipping_address', 'stage:stage', 'priority:priority', 'status:status', 'notes:notes'];
+    fields.forEach(function (pair) {
+      var parts = pair.split(':');
+      var input = form.querySelector('[name=' + parts[1] + ']');
+      if (input) input.value = btn.dataset[parts[0]] || '';
+    });
+    new bootstrap.Modal(document.getElementById('modalEditContact')).show();
+  }
+
+  // Loads a contacts.index URL's table+pagination fragment via AJAX and
+  // swaps it into #contactsTableWrap -- used by search and the per-page
+  // selector so neither one reloads the whole page.
+  function loadContacts(targetUrl) {
+    if (!tableWrap) { window.location.href = targetUrl; return; }
+    tableWrap.style.opacity = '0.5';
+    fetch(targetUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (r) { return r.text(); })
+      .then(function (html) {
+        tableWrap.innerHTML = html;
+        tableWrap.style.opacity = '';
+        history.replaceState(null, '', targetUrl);
+      })
+      .catch(function () { window.location.href = targetUrl; });
+  }
+
+  if (tableWrap) {
+    // Delegated listeners on the wrap itself survive every AJAX swap --
+    // no rebinding needed after the innerHTML is replaced.
+    tableWrap.addEventListener('click', function (e) {
+      var toggleBtn = e.target.closest('[data-group-toggle]');
+      if (toggleBtn) {
+        var groupClass = toggleBtn.dataset.groupToggle;
+        var rows = tableWrap.querySelectorAll('.' + groupClass);
+        var chevron = toggleBtn.querySelector('.group-chevron');
+        var willShow = rows.length && rows[0].style.display === 'none';
+        rows.forEach(function (r) { r.style.display = willShow ? '' : 'none'; });
+        if (chevron) chevron.className = 'bi group-chevron ' + (willShow ? 'bi-chevron-down' : 'bi-chevron-right');
+        return;
+      }
+
+      var editBtn = e.target.closest('.js-edit-contact');
+      if (editBtn) { openEditModal(editBtn); return; }
+
+      // Whole-row click opens the contact's profile, except when the click
+      // landed on an actual control (link/button/form field) inside it.
+      var row = e.target.closest('tr[data-href]');
+      if (row && !e.target.closest('a, button, form, input, select')) {
+        window.location.href = row.dataset.href;
+      }
+    });
+
+    tableWrap.addEventListener('change', function (e) {
+      if (e.target && e.target.id === 'perPageSelect') {
+        var u = new URL(window.location.href);
+        u.searchParams.set('per_page', e.target.value);
+        u.searchParams.delete('page');
+        localStorage.setItem('contacts_per_page', e.target.value);
+        loadContacts(u.toString());
+      }
+    });
+  }
+
+  // Progressive search: fetch-and-swap while typing (debounced), no full
+  // page reload.
+  if (searchInput && tableWrap) {
     var debounceTimer;
+    function runSearch() {
+      var u = new URL(window.location.href);
+      if (searchInput.value) { u.searchParams.set('search', searchInput.value); } else { u.searchParams.delete('search'); }
+      u.searchParams.delete('page');
+      loadContacts(u.toString());
+    }
     searchInput.addEventListener('input', function () {
       clearBtn.style.display = searchInput.value ? 'inline-flex' : 'none';
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(function () { searchForm.submit(); }, searchInput.value ? 450 : 0);
+      debounceTimer = setTimeout(runSearch, searchInput.value ? 350 : 0);
     });
     clearBtn.addEventListener('click', function () {
       searchInput.value = '';
       clearBtn.style.display = 'none';
-      searchForm.submit();
+      runSearch();
     });
   }
 });

@@ -1,9 +1,14 @@
-{{-- Renders one quotation row. $contact required; $nested (bool) dims/indents it as a grouped sub-row;
-     $groupClass/$hidden optionally control a collapsible group membership. --}}
-@php($nested = $nested ?? false)
+{{-- Renders one quotation row. $contact required. $groupCount/$groupId (on
+     the primary/most-recent row of a multi-quotation company) render a
+     small inline expand arrow; $groupClass/$hidden (on the rest of that
+     company's rows) control which rows the arrow shows/hides. Every row
+     looks the same either way -- clicking anywhere on it (outside a
+     button/link/form) opens the contact's profile. --}}
 @php($groupClass = $groupClass ?? '')
 @php($hidden = $hidden ?? false)
-<tr class="{{ $nested ? 'contact-subrow' : '' }} {{ $groupClass }}" @if ($hidden) style="display:none;" @endif>
+@php($groupCount = $groupCount ?? 1)
+@php($groupId = $groupId ?? null)
+<tr class="{{ $groupClass }} contact-row" data-href="{{ route('contacts.show', $contact) }}" style="cursor:pointer;{{ $hidden ? 'display:none;' : '' }}">
   <td>
     <div class="d-flex align-items-center gap-1">
       <form method="POST" action="{{ route('contacts.star', $contact) }}">
@@ -12,13 +17,21 @@
           <i class="bi {{ $contact->is_starred ? 'bi-star-fill' : 'bi-star' }}"></i>
         </button>
       </form>
-      @unless ($nested)
       <div class="avatar-circle" style="background:{{ $contact->avatarColor() }};">{{ $contact->initials() }}</div>
-      @endunless
     </div>
   </td>
-  <td><a href="{{ route('contacts.show', $contact) }}" class="fw-600 text-reset text-decoration-none">{{ $contact->quote_no ?: '—' }}</a></td>
-  <td>{{ $contact->company ?: $contact->name }}</td>
+  <td class="fw-600">{{ $contact->quote_no ?: '—' }}</td>
+  <td>
+    @if ($groupCount > 1)
+      <button type="button" class="btn btn-link p-0 border-0 me-1" data-group-toggle="group-{{ $groupId }}" title="{{ $groupCount }} quotations for this company" style="color:var(--text-muted);">
+        <i class="bi bi-chevron-right group-chevron"></i>
+      </button>
+    @endif
+    <a href="{{ route('contacts.show', $contact) }}" class="text-reset text-decoration-none fw-600">{{ $contact->company ?: $contact->name }}</a>
+    @if ($groupCount > 1)
+      <span class="chip chip-neutral ms-1" style="font-size:10.5px;">{{ $groupCount }}</span>
+    @endif
+  </td>
   <td>{{ $contact->email ?: '—' }}</td>
   <td>{{ $contact->whatsapp ?: '—' }}</td>
   <td>{{ $contact->priority ?: '—' }}</td>
@@ -34,7 +47,6 @@
   <td class="small text-muted-c">{{ $contact->quotation_date?->format('d M Y') ?? '—' }}</td>
   <td>
     <div class="d-flex gap-1 justify-content-end flex-wrap">
-      <a href="{{ route('contacts.show', $contact) }}" class="btn-icon-sq" title="View" data-bs-toggle="tooltip"><i class="bi bi-eye"></i></a>
       <button type="button" class="btn-icon-sq js-edit-contact"
         data-id="{{ $contact->id }}" data-quote-no="{{ $contact->quote_no }}" data-quotation-date="{{ optional($contact->quotation_date)->format('Y-m-d') }}"
         data-name="{{ $contact->name }}" data-company="{{ $contact->company }}"
@@ -82,11 +94,6 @@
         <button type="submit" class="btn-icon-sq" title="Archive" data-bs-toggle="tooltip"><i class="bi bi-archive"></i></button>
       </form>
       @endif
-
-      <form method="POST" action="{{ route('contacts.destroy', $contact) }}" data-confirm="Delete {{ $contact->name }}? This cannot be undone.">
-        @csrf @method('DELETE')
-        <button type="submit" class="btn-icon-sq danger" title="Delete" data-bs-toggle="tooltip"><i class="bi bi-trash"></i></button>
-      </form>
     </div>
   </td>
 </tr>

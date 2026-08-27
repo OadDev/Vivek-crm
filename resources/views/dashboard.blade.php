@@ -42,7 +42,7 @@ $statCards = [
 @if ($followUpsDue->isNotEmpty())
 <div class="card-c mt-4">
   <div class="card-c-body">
-    <div class="section-title-row"><h5><i class="bi bi-alarm-fill me-1"></i>Follow-up Required</h5><span class="chip chip-warning">{{ $followUpsDue->count() }} due</span></div>
+    <div class="section-title-row"><h5><i class="bi bi-alarm-fill me-1"></i>Follow-up Required</h5><span class="chip chip-warning">{{ $followUpsDue->count() }} upcoming</span></div>
     @foreach ($followUpsDue as $reminder)
       <div class="d-flex align-items-center justify-content-between py-2" style="border-bottom:1px solid var(--border-color);">
         <a href="{{ $reminder->contact ? route('contacts.show', $reminder->contact) : '#' }}" class="text-reset text-decoration-none">

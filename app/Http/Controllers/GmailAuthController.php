@@ -118,20 +118,20 @@ class GmailAuthController extends Controller
         $account = GmailAccount::forUser(auth()->user());
 
         if (! $account->isConnected()) {
-            return redirect()->route('settings.index')->with('error', 'Connect a Gmail account first.');
+            return redirect()->back()->with('error', 'Connect a Gmail account first.');
         }
 
         try {
             $result = $service->syncInbox($account);
 
-            return redirect()->route('settings.index')->with(
+            return redirect()->back()->with(
                 'success',
                 "Gmail sync complete — {$result['created']} new message(s), {$result['skipped']} already up to date."
             );
         } catch (Throwable $e) {
             $account->update(['last_sync_status' => 'failed', 'last_sync_message' => $e->getMessage()]);
 
-            return redirect()->route('settings.index')->with('error', 'Gmail sync failed: '.$e->getMessage());
+            return redirect()->back()->with('error', 'Gmail sync failed: '.$e->getMessage());
         }
     }
 }

@@ -78,6 +78,23 @@ class SettingsController extends Controller
     }
 
     /**
+     * The three saved quick-reply bodies (F1/F2/F3) shown as one-click send
+     * buttons on every Gmail conversation.
+     */
+    public function updateQuickReplies(Request $request)
+    {
+        $data = $request->validate([
+            'quick_reply_f1' => ['nullable', 'string'],
+            'quick_reply_f2' => ['nullable', 'string'],
+            'quick_reply_f3' => ['nullable', 'string'],
+        ]);
+
+        auth()->user()->update($data);
+
+        return redirect()->route('settings.index')->with('success', 'Quick-reply templates saved.');
+    }
+
+    /**
      * Each user's own default WhatsApp template — can be one of their
      * personal templates or a shared company one. Falls back to the
      * company-wide default (below) when unset.

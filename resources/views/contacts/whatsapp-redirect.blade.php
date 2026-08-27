@@ -20,16 +20,22 @@
   </div>
   <script>
     // Try the fast native-app link first; if the page is still visible
-    // shortly after (nothing intercepted it — no WhatsApp app registered
-    // for whatsapp://), fall back to the universal wa.me link.
+    // (not handed off to an installed app) after a short wait, fall back
+    // to the universal wa.me link. We only watch document.hidden/
+    // visibilitychange here, not window blur — a browser's own "open this
+    // app?" permission prompt for an unregistered whatsapp:// handler
+    // steals focus (blur) without the app ever actually opening, which
+    // used to make this skip the fallback and appear stuck.
     var opened = false;
-    window.addEventListener('blur', function () { opened = true; });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) { opened = true; }
+    });
     window.location = @json($appLink);
     setTimeout(function () {
       if (!opened && !document.hidden) {
         window.location = @json($webLink);
       }
-    }, 800);
+    }, 1500);
   </script>
 </body>
 </html>
