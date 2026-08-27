@@ -121,6 +121,20 @@ window.APP_CSRF = @json(csrf_token());
 <script>
 @include('partials.app-js')
 </script>
+<script>
+// Silent background sync trigger -- see SystemController::heartbeat(). No
+// server cron is available on this hosting, so this (plus the manual Sync
+// Now buttons) is what keeps auto-sync/Gmail/status-recalc running, as
+// long as someone has a page open. Fire-and-forget; failures are ignored.
+(function () {
+  var HEARTBEAT_URL = @json(route('system.heartbeat'));
+  function ping() {
+    fetch(HEARTBEAT_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).catch(function () {});
+  }
+  ping();
+  setInterval(ping, 3 * 60 * 1000);
+})();
+</script>
 @stack('scripts')
 </body>
 </html>

@@ -120,8 +120,23 @@ Three artisan commands drive the background automation described in the spec:
 - `gmail:sync` — pulls new inbox messages from the connected Gmail account
   every 5 minutes (no-op if nothing is connected).
 
-All three are registered in `routes/console.php` via the Laravel scheduler.
-In production, point a single system cron entry at it:
+**No server cron job is required.** Every page, once loaded, silently pings
+`/system/heartbeat` (see `layouts/app.blade.php` and
+`SystemController::heartbeat()`) right away and then every 3 minutes for as
+long as that page stays open, and that ping is what actually runs the three
+commands above — as long as at least one person has the CRM open in a
+browser tab, they keep running on their normal schedule. Each command is
+still throttled to its own interval (a rapid string of pings from several
+open tabs won't run it more than once per window), and `contacts:sync` still
+separately respects the interval/enabled setting configured on the Contacts
+page. The only gap: if nobody has any page open at all (e.g. overnight),
+nothing runs until someone opens one again — the manual "Sync Now" buttons
+always work regardless.
+
+If you *do* have cron access and want these running even with no browser
+open, they're also registered in `routes/console.php` via the Laravel
+scheduler as a drop-in alternative/backup — point a single system cron entry
+at it and both mechanisms work fine together:
 
 ```bash
 * * * * * cd /path-to-app && php artisan schedule:run >> /dev/null 2>&1

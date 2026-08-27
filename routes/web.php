@@ -11,6 +11,7 @@ use App\Http\Controllers\ReferenceTableController;
 use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SetupController;
+use App\Http\Controllers\SystemController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WeightCalculatorController;
 use App\Http\Controllers\WhatsappTemplateController;
@@ -43,6 +44,10 @@ Route::post('/logout', [LoginController::class, 'destroy'])->name('logout')->mid
 // ---------------------------------------------------------------------
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Silent background ping from every open page — see SystemController
+    // for why this exists (no server cron access on this hosting).
+    Route::get('/system/heartbeat', [SystemController::class, 'heartbeat'])->name('system.heartbeat');
 
     // Gmail Inbox
     Route::prefix('gmail')->name('gmail.')->group(function () {
