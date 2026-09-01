@@ -63,4 +63,32 @@
       }
     });
   });
+
+  // WhatsApp buttons (Contacts list + contact profile page) ------------------
+  // Fetch the app/web links in the background instead of navigating there
+  // first, so a successful whatsapp:// handoff never takes you off the
+  // current page at all -- only the wa.me fallback (no WhatsApp app
+  // installed) is a real page navigation.
+  document.body.addEventListener('click', function (e) {
+    var waBtn = e.target.closest('.js-whatsapp-btn');
+    if (!waBtn) return;
+
+    e.preventDefault();
+    var waHref = waBtn.getAttribute('href');
+    fetch(waHref, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var opened = false;
+        function onVisibilityChange() { if (document.hidden) { opened = true; } }
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        window.location.href = data.appLink;
+        setTimeout(function () {
+          document.removeEventListener('visibilitychange', onVisibilityChange);
+          if (!opened && !document.hidden) {
+            window.location.href = data.webLink;
+          }
+        }, 1500);
+      })
+      .catch(function () { window.location.href = waHref; });
+  });
 })();

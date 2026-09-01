@@ -45,6 +45,20 @@ class GmailApiService
         ]);
 
         if (! $response->successful()) {
+            // invalid_grant means the refresh token itself is dead --
+            // revoked from myaccount.google.com/permissions, expired from
+            // 6 months of inactivity, or the OAuth Client was changed.
+            // Retrying with the same token will never succeed, so
+            // disconnect the account now: this stops every future sync/send
+            // from repeating the same failure forever, and correctly shows
+            // "Disconnected" in Settings with a one-click Connect Gmail
+            // button, instead of a cryptic JSON error persisting silently.
+            if (str_contains($response->body(), 'invalid_grant')) {
+                $account->disconnect();
+
+                throw new RuntimeException('Your Gmail connection has expired or was revoked. Please reconnect Gmail from Settings.');
+            }
+
             throw new RuntimeException('Could not refresh the Gmail access token: '.$response->body());
         }
 

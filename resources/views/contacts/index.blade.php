@@ -119,9 +119,9 @@ if (! function_exists('sortLink')) {
           <button type="button" id="contactsSearchClear" title="Clear" style="display:{{ request('search') ? 'inline-flex' : 'none' }};position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--text-muted);align-items:center;"><i class="bi bi-x-circle-fill"></i></button>
         </div>
         <div class="filter-chip-group">
-          <a href="{{ route('contacts.index', array_merge(request()->except(['filter_status','page']))) }}" class="filter-chip-btn {{ !request('filter_status') ? 'active' : '' }}">All <span class="cnt">{{ $counts['all_statuses'] }}</span></a>
+          <a href="{{ route('contacts.index', array_merge(request()->except(['filter_status','page']), ['filter_status' => 'all'])) }}" class="filter-chip-btn {{ $effectiveFilterStatus === 'all' ? 'active' : '' }}">All <span class="cnt">{{ $counts['all_statuses'] }}</span></a>
           @foreach (\App\Models\Contact::statusOptions() as $key => $label)
-            <a href="{{ route('contacts.index', array_merge(request()->except('page'), ['filter_status' => $key])) }}" class="filter-chip-btn {{ request('filter_status') === $key ? 'active' : '' }}">{{ $label }} <span class="cnt">{{ $statusCounts[$key] ?? 0 }}</span></a>
+            <a href="{{ route('contacts.index', array_merge(request()->except('page'), ['filter_status' => $key])) }}" class="filter-chip-btn {{ $effectiveFilterStatus === $key ? 'active' : '' }}">{{ $label }} <span class="cnt">{{ $statusCounts[$key] ?? 0 }}</span></a>
           @endforeach
         </div>
         <button type="button" class="btn btn-light-c btn-sm" data-bs-toggle="collapse" data-bs-target="#advancedFiltersPanel"><i class="bi bi-sliders me-1"></i>Custom Filters</button>
@@ -243,6 +243,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
       var editBtn = e.target.closest('.js-edit-contact');
       if (editBtn) { openEditModal(editBtn); return; }
+
+      // (WhatsApp buttons are handled globally in partials/app-js.blade.php.)
 
       // Whole-row click opens the contact's profile, except when the click
       // landed on an actual control (link/button/form field) inside it.

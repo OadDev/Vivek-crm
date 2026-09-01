@@ -46,54 +46,68 @@
   </td>
   <td class="small text-muted-c">{{ $contact->quotation_date?->format('d M Y') ?? '—' }}</td>
   <td>
-    <div class="d-flex gap-1 justify-content-end flex-wrap">
-      <button type="button" class="btn-icon-sq js-edit-contact"
-        data-id="{{ $contact->id }}" data-quote-no="{{ $contact->quote_no }}" data-quotation-date="{{ optional($contact->quotation_date)->format('Y-m-d') }}"
-        data-name="{{ $contact->name }}" data-company="{{ $contact->company }}"
-        data-email="{{ $contact->email }}" data-whatsapp="{{ $contact->whatsapp }}" data-designation="{{ $contact->designation }}"
-        data-sales-man="{{ $contact->sales_man }}" data-gst-number="{{ $contact->gst_number }}" data-transport="{{ $contact->transport }}"
-        data-shipping-address="{{ $contact->shipping_address }}" data-stage="{{ $contact->stage }}" data-priority="{{ $contact->priority }}"
-        data-status="{{ $contact->status }}" data-notes="{{ $contact->notes }}"
-        title="Edit" data-bs-toggle="tooltip"><i class="bi bi-pencil"></i></button>
+    <div class="d-flex gap-1 justify-content-end align-items-center" style="flex-wrap:nowrap;">
       @if ($contact->whatsapp)
-      <a href="{{ route('contacts.whatsapp', $contact) }}" target="_blank" class="btn-icon-sq success" title="WhatsApp (uses your saved template)" data-bs-toggle="tooltip"><i class="bi bi-whatsapp"></i></a>
+      <a href="{{ route('contacts.whatsapp', $contact) }}" class="btn-icon-sq success js-whatsapp-btn" title="WhatsApp (uses your saved template)" data-bs-toggle="tooltip"><i class="bi bi-whatsapp"></i></a>
       @endif
       @if ($contact->email)
       <a href="{{ route('gmail.index', ['search' => $contact->email]) }}" class="btn-icon-sq" title="Find in Gmail" data-bs-toggle="tooltip"><i class="bi bi-envelope-fill"></i></a>
       @endif
-
-      <form method="POST" action="{{ route('contacts.remind', $contact) }}">
-        <input type="hidden" name="days" value="2">@csrf
-        <button type="submit" class="btn btn-outline-c btn-sm" title="Remind me in 2 days" data-bs-toggle="tooltip"><i class="bi bi-alarm"></i> 2d</button>
-      </form>
-      <form method="POST" action="{{ route('contacts.remind', $contact) }}">
-        <input type="hidden" name="days" value="7">@csrf
-        <button type="submit" class="btn btn-outline-c btn-sm" title="Remind me in 7 days" data-bs-toggle="tooltip"><i class="bi bi-alarm"></i> 7d</button>
-      </form>
-
-      @if ($contact->is_won)
-      <form method="POST" action="{{ route('contacts.unwon', $contact) }}">
-        @csrf @method('PATCH')
-        <button type="submit" class="btn-icon-sq" title="Revert from Won" data-bs-toggle="tooltip"><i class="bi bi-arrow-counterclockwise"></i></button>
-      </form>
-      @else
-      <form method="POST" action="{{ route('contacts.won', $contact) }}">
-        @csrf @method('PATCH')
-        <button type="submit" class="btn-icon-sq" title="Mark Won" data-bs-toggle="tooltip"><i class="bi bi-trophy"></i></button>
-      </form>
-      @endif
-
-      @if ($contact->is_archived)
-      <form method="POST" action="{{ route('contacts.unarchive', $contact) }}">
-        @csrf @method('PATCH')
-        <button type="submit" class="btn-icon-sq" title="Restore" data-bs-toggle="tooltip"><i class="bi bi-box-arrow-up"></i></button>
-      </form>
-      @else
-      <form method="POST" action="{{ route('contacts.archive', $contact) }}">
-        @csrf @method('PATCH')
-        <button type="submit" class="btn-icon-sq" title="Archive" data-bs-toggle="tooltip"><i class="bi bi-archive"></i></button>
-      </form>
-      @endif
+      <div class="dropdown">
+        <button type="button" class="btn-icon-sq" data-bs-toggle="dropdown" title="More actions"><i class="bi bi-three-dots-vertical"></i></button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><button type="button" class="dropdown-item js-edit-contact"
+            data-id="{{ $contact->id }}" data-quote-no="{{ $contact->quote_no }}" data-quotation-date="{{ optional($contact->quotation_date)->format('Y-m-d') }}"
+            data-name="{{ $contact->name }}" data-company="{{ $contact->company }}"
+            data-email="{{ $contact->email }}" data-whatsapp="{{ $contact->whatsapp }}" data-designation="{{ $contact->designation }}"
+            data-sales-man="{{ $contact->sales_man }}" data-gst-number="{{ $contact->gst_number }}" data-transport="{{ $contact->transport }}"
+            data-shipping-address="{{ $contact->shipping_address }}" data-stage="{{ $contact->stage }}" data-priority="{{ $contact->priority }}"
+            data-status="{{ $contact->status }}" data-notes="{{ $contact->notes }}"><i class="bi bi-pencil me-2"></i>Edit</button></li>
+          <li>
+            <form method="POST" action="{{ route('contacts.remind', $contact) }}">
+              <input type="hidden" name="days" value="2">@csrf
+              <button type="submit" class="dropdown-item"><i class="bi bi-alarm me-2"></i>Remind me in 2 days</button>
+            </form>
+          </li>
+          <li>
+            <form method="POST" action="{{ route('contacts.remind', $contact) }}">
+              <input type="hidden" name="days" value="7">@csrf
+              <button type="submit" class="dropdown-item"><i class="bi bi-alarm me-2"></i>Remind me in 7 days</button>
+            </form>
+          </li>
+          <li><hr class="dropdown-divider"></li>
+          @if ($contact->is_won)
+          <li>
+            <form method="POST" action="{{ route('contacts.unwon', $contact) }}">
+              @csrf @method('PATCH')
+              <button type="submit" class="dropdown-item"><i class="bi bi-arrow-counterclockwise me-2"></i>Revert from Won</button>
+            </form>
+          </li>
+          @else
+          <li>
+            <form method="POST" action="{{ route('contacts.won', $contact) }}">
+              @csrf @method('PATCH')
+              <button type="submit" class="dropdown-item"><i class="bi bi-trophy me-2"></i>Mark Won</button>
+            </form>
+          </li>
+          @endif
+          @if ($contact->is_archived)
+          <li>
+            <form method="POST" action="{{ route('contacts.unarchive', $contact) }}">
+              @csrf @method('PATCH')
+              <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-up me-2"></i>Restore</button>
+            </form>
+          </li>
+          @else
+          <li>
+            <form method="POST" action="{{ route('contacts.archive', $contact) }}">
+              @csrf @method('PATCH')
+              <button type="submit" class="dropdown-item"><i class="bi bi-archive me-2"></i>Archive</button>
+            </form>
+          </li>
+          @endif
+        </ul>
+      </div>
     </div>
   </td>
 </tr>

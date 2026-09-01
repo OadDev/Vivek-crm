@@ -32,7 +32,7 @@
           <a href="mailto:{{ $contact->email }}" class="btn-icon-sq" title="Email" data-bs-toggle="tooltip"><i class="bi bi-envelope-fill"></i></a>
           @endif
           @if ($contact->whatsapp)
-          <a href="{{ route('contacts.whatsapp', $contact) }}" target="_blank" class="btn-icon-sq success" title="WhatsApp (uses your saved template)" data-bs-toggle="tooltip"><i class="bi bi-whatsapp"></i></a>
+          <a href="{{ route('contacts.whatsapp', $contact) }}" class="btn-icon-sq success js-whatsapp-btn" title="WhatsApp (uses your saved template)" data-bs-toggle="tooltip"><i class="bi bi-whatsapp"></i></a>
           @endif
           <button type="button" class="btn-icon-sq" title="Edit" data-bs-toggle="modal" data-bs-target="#modalQuickEditContact"><i class="bi bi-pencil-fill"></i></button>
         </div>
@@ -125,7 +125,7 @@
                 @endif
               </div>
               @if ($contact->whatsapp)
-              <a href="{{ route('contacts.whatsapp', $contact) }}" target="_blank" class="btn btn-whatsapp-c btn-sm"><i class="bi bi-whatsapp me-1"></i>Send WhatsApp</a>
+              <a href="{{ route('contacts.whatsapp', $contact) }}" class="btn btn-whatsapp-c btn-sm js-whatsapp-btn"><i class="bi bi-whatsapp me-1"></i>Send WhatsApp</a>
               @endif
             </div>
             @if ($contact->whatsappMessages->first())

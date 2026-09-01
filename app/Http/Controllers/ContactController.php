@@ -64,8 +64,19 @@ class ContactController extends Controller
             }
         }
 
-        if ($request->filled('filter_status')) {
-            $query->where('status', $request->input('filter_status'));
+        // A fresh visit (no filter_status in the URL at all) defaults to
+        // Active leads, not every status. The "All" chip passes the explicit
+        // sentinel value 'all' so it can still mean "no status filter" --
+        // distinct from "not chosen yet".
+        $filterStatus = $request->input('filter_status');
+        if ($filterStatus === null) {
+            $filterStatus = 'active';
+        } elseif ($filterStatus === 'all') {
+            $filterStatus = null;
+        }
+
+        if ($filterStatus) {
+            $query->where('status', $filterStatus);
         }
 
         if ($request->filled('date_from')) {
@@ -128,11 +139,13 @@ class ContactController extends Controller
         $statusCounts = (clone $statusScopeQuery)->selectRaw('status, count(*) as cnt')->groupBy('status')->pluck('cnt', 'status');
         $counts['all_statuses'] = (clone $statusScopeQuery)->count();
 
+        $effectiveFilterStatus = $filterStatus ?: 'all';
+
         if ($request->ajax()) {
             return view('contacts._table', compact('contacts', 'sort', 'dir', 'perPage'));
         }
 
-        return view('contacts.index', compact('contacts', 'sort', 'dir', 'perPage', 'syncSetting', 'view', 'counts', 'statusCounts'));
+        return view('contacts.index', compact('contacts', 'sort', 'dir', 'perPage', 'syncSetting', 'view', 'counts', 'statusCounts', 'effectiveFilterStatus'));
     }
 
     public function store(Request $request)
@@ -252,6 +265,18 @@ class ContactController extends Controller
         $contact->update(['last_contacted_at' => now()]);
 
         Activity::log("WhatsApp opened for <b>{$contact->name}</b>", 'bi-whatsapp', 'success', $contact);
+
+        // The Contacts list fetches this in the background (see the
+        // whatsapp click handler in index.blade.php) so it can try
+        // whatsapp:// without ever navigating the page away -- only the
+        // full-page view below is used as a plain-link fallback (e.g. if
+        // JS is disabled, or opened directly).
+        if (request()->wantsJson()) {
+            return response()->json([
+                'appLink' => $whatsappMessage->waAppLink(),
+                'webLink' => $whatsappMessage->waLink(),
+            ]);
+        }
 
         return view('contacts.whatsapp-redirect', [
             'appLink' => $whatsappMessage->waAppLink(),
