@@ -7,7 +7,7 @@
 <div class="page-header">
   <div>
     <div class="page-title">Weight Calculator</div>
-    <div class="page-subtitle">Estimate metal weight by shape, material and dimensions — for quick quoting.</div>
+    <div class="page-subtitle">Estimate metal weight and price by shape, material and dimensions — for quick quoting.</div>
   </div>
 </div>
 
@@ -16,7 +16,7 @@
     <div class="card-c">
       <div class="card-c-body">
         <div class="row g-3">
-          <div class="col-md-4">
+          <div class="col-md-6">
             <label class="form-label">Shape</label>
             <select class="form-select" id="wcShape">
               <option value="round_bar">Round Bar / Rod</option>
@@ -28,7 +28,7 @@
               <option value="sheet_plate">Sheet / Plate</option>
             </select>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-6">
             <label class="form-label">Material</label>
             <select class="form-select" id="wcMaterial">
               @foreach ($densities as $key => $m)
@@ -37,17 +37,7 @@
               <option value="custom">Custom density...</option>
             </select>
           </div>
-          <div class="col-md-4">
-            <label class="form-label">Unit</label>
-            <select class="form-select" id="wcUnit">
-              <option value="mm">Millimetre (mm)</option>
-              <option value="cm">Centimetre (cm)</option>
-              <option value="m">Metre (m)</option>
-              <option value="in">Inch (in)</option>
-              <option value="ft">Foot (ft)</option>
-            </select>
-          </div>
-          <div class="col-md-4" id="wcCustomDensityField" style="display:none;">
+          <div class="col-md-6" id="wcCustomDensityField" style="display:none;">
             <label class="form-label">Custom Density (g/cm³)</label>
             <input type="number" step="any" min="0" class="form-control" id="wcCustomDensity" placeholder="e.g. 7.85">
           </div>
@@ -56,11 +46,16 @@
         <hr>
 
         <div class="row g-3" id="wcDims"></div>
+        <div class="small text-muted-c mt-2">Each dimension has its own unit — pick mm, cm, m, inch, or foot separately for outer, inner/wall, and length.</div>
 
         <div class="row g-3 mt-1">
           <div class="col-md-6">
             <label class="form-label">Quantity (pieces)</label>
             <input type="number" min="1" step="1" class="form-control" id="wcQty" value="1">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Price per kg (₹)</label>
+            <input type="number" step="any" min="0" class="form-control" id="wcPricePerKg" placeholder="e.g. 1000">
           </div>
         </div>
       </div>
@@ -71,13 +66,25 @@
     <div class="card-c h-100">
       <div class="card-c-body d-flex flex-column">
         <h5 class="mb-3"><i class="bi bi-calculator-fill me-1"></i>Result</h5>
-        <div class="flex-fill d-flex flex-column justify-content-center align-items-center text-center" style="gap:6px;">
-          <div class="small text-muted-c">Weight per piece</div>
-          <div style="font-size:32px;font-weight:700;" id="wcPerPiece">0 kg</div>
-          <div class="small text-muted-c mt-3">Total weight (<span id="wcQtyLabel">1</span> piece(s))</div>
-          <div style="font-size:24px;font-weight:700;color:var(--color-primary);" id="wcTotal">0 kg</div>
+        <div class="row g-3 text-center">
+          <div class="col-6">
+            <div class="small text-muted-c">Weight per piece</div>
+            <div style="font-size:26px;font-weight:700;" id="wcPerPiece">0 kg</div>
+          </div>
+          <div class="col-6">
+            <div class="small text-muted-c">Total weight (<span id="wcQtyLabel">1</span> pc)</div>
+            <div style="font-size:26px;font-weight:700;color:var(--color-primary);" id="wcTotal">0 kg</div>
+          </div>
+          <div class="col-6">
+            <div class="small text-muted-c">Price per piece</div>
+            <div style="font-size:22px;font-weight:700;" id="wcPricePerPiece">₹0</div>
+          </div>
+          <div class="col-6">
+            <div class="small text-muted-c">Total price</div>
+            <div style="font-size:22px;font-weight:700;color:var(--color-success);" id="wcPriceTotal">₹0</div>
+          </div>
         </div>
-        <div class="small text-muted-c mt-4">Enter dimensions in whichever unit you pick above — everything converts automatically. Formulas: solid bars/pipes use cross-section area × length × density; sheet/plate uses length × width × thickness × density. Figures are estimates — always confirm against your supplier's certified weight for final quotes.</div>
+        <div class="small text-muted-c mt-4">Formulas: solid bars/pipes use cross-section area × length × density; sheet/plate uses length × width × thickness × density. Price = weight × price per kg. Figures are estimates — always confirm against your supplier's certified weight for final quotes.</div>
       </div>
     </div>
   </div>
@@ -91,18 +98,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
   var shapeSel = document.getElementById('wcShape');
   var materialSel = document.getElementById('wcMaterial');
-  var unitSel = document.getElementById('wcUnit');
   var customField = document.getElementById('wcCustomDensityField');
   var customInput = document.getElementById('wcCustomDensity');
   var dimsWrap = document.getElementById('wcDims');
   var qtyInput = document.getElementById('wcQty');
+  var priceInput = document.getElementById('wcPricePerKg');
   var perPieceEl = document.getElementById('wcPerPiece');
   var totalEl = document.getElementById('wcTotal');
   var qtyLabelEl = document.getElementById('wcQtyLabel');
+  var pricePerPieceEl = document.getElementById('wcPricePerPiece');
+  var priceTotalEl = document.getElementById('wcPriceTotal');
 
   // Conversion factor to millimetres -- all calculations happen in mm.
   var UNIT_TO_MM = { mm: 1, cm: 10, m: 1000, in: 25.4, ft: 304.8 };
-  var UNIT_LABEL = { mm: 'mm', cm: 'cm', m: 'm', in: 'in', ft: 'ft' };
+  var UNIT_OPTIONS = ['mm', 'cm', 'm', 'in', 'ft'];
 
   var shapeFields = {
     round_bar: [['d', 'Diameter']],
@@ -128,38 +137,46 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function savePrefs() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        shape: shapeSel.value,
-        material: materialSel.value,
-        unit: unitSel.value,
-      }));
+      var fieldUnits = {};
+      dimsWrap.querySelectorAll('.wc-dim-unit').forEach(function (sel) {
+        fieldUnits[sel.dataset.key] = sel.value;
+      });
+      var prefs = loadPrefs();
+      prefs.shape = shapeSel.value;
+      prefs.material = materialSel.value;
+      prefs.fieldUnits = Object.assign({}, prefs.fieldUnits || {}, fieldUnits);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
     } catch (e) { /* ignore (private browsing, storage disabled, etc.) */ }
   }
 
-  function unitLabel() {
-    return UNIT_LABEL[unitSel.value] || 'mm';
+  function unitOptionsHtml(selected) {
+    return UNIT_OPTIONS.map(function (u) {
+      return '<option value="' + u + '"' + (u === selected ? ' selected' : '') + '>' + u + '</option>';
+    }).join('');
   }
 
   function renderDimFields() {
     var fields = shapeFields[shapeSel.value] || [];
-    var unit = unitLabel();
+    var prefs = loadPrefs();
+    var fieldUnits = prefs.fieldUnits || {};
+
     dimsWrap.innerHTML = fields.map(function (f) {
-      return '<div class="col-md-6"><label class="form-label">' + f[1] + ' (' + unit + ')</label>' +
-        '<input type="number" step="any" min="0" class="form-control wc-dim" data-key="' + f[0] + '"></div>';
+      var key = f[0], label = f[1];
+      var unit = fieldUnits[key] || 'mm';
+      return '<div class="col-md-6"><label class="form-label">' + label + '</label>' +
+        '<div class="input-group input-group-sm">' +
+        '<input type="number" step="any" min="0" class="form-control wc-dim" data-key="' + key + '">' +
+        '<select class="form-select wc-dim-unit" data-key="' + key + '" style="max-width:78px;flex:0 0 auto;">' + unitOptionsHtml(unit) + '</select>' +
+        '</div></div>';
     }).join('');
+
     dimsWrap.querySelectorAll('.wc-dim').forEach(function (input) {
       input.addEventListener('input', calculate);
     });
-    calculate();
-  }
-
-  function relabelDimFields() {
-    var unit = unitLabel();
-    dimsWrap.querySelectorAll('.wc-dim').forEach(function (input) {
-      var label = input.closest('.col-md-6').querySelector('.form-label');
-      var base = label.textContent.replace(/\s*\([^)]*\)\s*$/, '');
-      label.textContent = base + ' (' + unit + ')';
+    dimsWrap.querySelectorAll('.wc-dim-unit').forEach(function (sel) {
+      sel.addEventListener('change', function () { calculate(); savePrefs(); });
     });
+
     calculate();
   }
 
@@ -171,10 +188,11 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function dimValueMm(key) {
-    var el = dimsWrap.querySelector('.wc-dim[data-key="' + key + '"]');
-    if (!el) return 0;
-    var raw = parseFloat(el.value) || 0;
-    var factor = UNIT_TO_MM[unitSel.value] || 1;
+    var input = dimsWrap.querySelector('.wc-dim[data-key="' + key + '"]');
+    var unitSel = dimsWrap.querySelector('.wc-dim-unit[data-key="' + key + '"]');
+    if (!input) return 0;
+    var raw = parseFloat(input.value) || 0;
+    var factor = UNIT_TO_MM[unitSel ? unitSel.value : 'mm'] || 1;
     return raw * factor;
   }
 
@@ -204,10 +222,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  function formatRupees(n) {
+    return '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
   function calculate() {
     var shape = shapeSel.value;
     var density = currentDensity();
     var qty = Math.max(parseInt(qtyInput.value, 10) || 0, 0);
+    var pricePerKg = parseFloat(priceInput.value) || 0;
     var weightKg = 0;
 
     if (shape === 'sheet_plate') {
@@ -221,9 +244,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (!isFinite(weightKg) || weightKg < 0) weightKg = 0;
 
+    var totalWeightKg = weightKg * qty;
+
     perPieceEl.textContent = weightKg.toFixed(3) + ' kg';
-    totalEl.textContent = (weightKg * qty).toFixed(3) + ' kg';
+    totalEl.textContent = totalWeightKg.toFixed(3) + ' kg';
     qtyLabelEl.textContent = qty;
+    pricePerPieceEl.textContent = formatRupees(weightKg * pricePerKg);
+    priceTotalEl.textContent = formatRupees(totalWeightKg * pricePerKg);
   }
 
   shapeSel.addEventListener('change', function () { renderDimFields(); savePrefs(); });
@@ -232,14 +259,13 @@ document.addEventListener('DOMContentLoaded', function () {
     calculate();
     savePrefs();
   });
-  unitSel.addEventListener('change', function () { relabelDimFields(); savePrefs(); });
   customInput.addEventListener('input', calculate);
   qtyInput.addEventListener('input', calculate);
+  priceInput.addEventListener('input', calculate);
 
-  // Restore last-used shape/material/unit for this browser, if any.
+  // Restore last-used shape/material/per-field units for this browser, if any.
   var prefs = loadPrefs();
   if (prefs.shape && shapeFields[prefs.shape]) shapeSel.value = prefs.shape;
-  if (prefs.unit && UNIT_TO_MM[prefs.unit]) unitSel.value = prefs.unit;
   if (prefs.material) {
     var hasOption = Array.prototype.some.call(materialSel.options, function (o) { return o.value === prefs.material; });
     materialSel.value = hasOption ? prefs.material : 'custom';

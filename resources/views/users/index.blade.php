@@ -22,11 +22,11 @@
         <tbody>
           @foreach ($users as $u)
           <tr>
-            <td class="fw-600">{{ $u->name }}{{ $u->id === auth()->id() ? ' (you)' : '' }}</td>
-            <td>{{ $u->email }}</td>
-            <td><span class="chip {{ $u->isAdmin() ? 'chip-success' : 'chip-neutral' }}">{{ ucfirst($u->role) }}</span></td>
-            <td>{{ $u->sales_man ?: '—' }}</td>
-            <td>
+            <td class="fw-600" data-label="Name">{{ $u->name }}{{ $u->id === auth()->id() ? ' (you)' : '' }}</td>
+            <td data-label="Email">{{ $u->email }}</td>
+            <td data-label="Role"><span class="chip {{ $u->isAdmin() ? 'chip-success' : 'chip-neutral' }}">{{ ucfirst($u->role) }}</span></td>
+            <td data-label="Sales Man">{{ $u->sales_man ?: '—' }}</td>
+            <td class="td-plain">
               <div class="d-flex gap-1 justify-content-end">
                 <button type="button" class="btn-icon-sq js-edit-user"
                   data-id="{{ $u->id }}" data-name="{{ $u->name }}" data-email="{{ $u->email }}" data-role="{{ $u->role }}" data-sales-man="{{ $u->sales_man }}"

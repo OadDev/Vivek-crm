@@ -9,7 +9,7 @@
 @php($groupCount = $groupCount ?? 1)
 @php($groupId = $groupId ?? null)
 <tr class="{{ $groupClass }} contact-row" data-href="{{ route('contacts.show', $contact) }}" style="cursor:pointer;{{ $hidden ? 'display:none;' : '' }}">
-  <td>
+  <td class="td-plain">
     <div class="d-flex align-items-center gap-1">
       <form method="POST" action="{{ route('contacts.star', $contact) }}">
         @csrf @method('PATCH')
@@ -20,8 +20,8 @@
       <div class="avatar-circle" style="background:{{ $contact->avatarColor() }};">{{ $contact->initials() }}</div>
     </div>
   </td>
-  <td class="fw-600">{{ $contact->quote_no ?: '—' }}</td>
-  <td>
+  <td class="fw-600" data-label="Quote No.">{{ $contact->quote_no ?: '—' }}</td>
+  <td data-label="Company">
     @if ($groupCount > 1)
       <button type="button" class="btn btn-link p-0 border-0 me-1" data-group-toggle="group-{{ $groupId }}" title="{{ $groupCount }} quotations for this company" style="color:var(--text-muted);">
         <i class="bi bi-chevron-right group-chevron"></i>
@@ -32,10 +32,10 @@
       <span class="chip chip-neutral ms-1" style="font-size:10.5px;">{{ $groupCount }}</span>
     @endif
   </td>
-  <td>{{ $contact->email ?: '—' }}</td>
-  <td>{{ $contact->whatsapp ?: '—' }}</td>
-  <td>{{ $contact->priority ?: '—' }}</td>
-  <td>
+  <td data-label="Email">{{ $contact->email ?: '—' }}</td>
+  <td data-label="Phone / WhatsApp">{{ $contact->whatsapp ?: '—' }}</td>
+  <td data-label="Priority">{{ $contact->priority ?: '—' }}</td>
+  <td data-label="Status">
     @if ($contact->is_won)
       <span class="chip chip-success"><i class="bi bi-trophy-fill"></i>Won</span>
     @elseif ($contact->is_archived)
@@ -44,8 +44,8 @@
       <span class="chip {{ \App\Models\Contact::statusChipClass($contact->status) }}"><i class="bi bi-circle-fill"></i>{{ \App\Models\Contact::statusOptions()[$contact->status] }}</span>
     @endif
   </td>
-  <td class="small text-muted-c">{{ $contact->quotation_date?->format('d M Y') ?? '—' }}</td>
-  <td>
+  <td class="small text-muted-c" data-label="Quotation Date">{{ $contact->quotation_date?->format('d M Y') ?? '—' }}</td>
+  <td class="td-plain">
     <div class="d-flex gap-1 justify-content-end align-items-center" style="flex-wrap:nowrap;">
       @if ($contact->whatsapp)
       <a href="{{ route('contacts.whatsapp', $contact) }}" class="btn-icon-sq success js-whatsapp-btn" title="WhatsApp (uses your saved template)" data-bs-toggle="tooltip"><i class="bi bi-whatsapp"></i></a>

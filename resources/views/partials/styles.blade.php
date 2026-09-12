@@ -549,4 +549,28 @@ small,.text-muted-c{color:var(--text-secondary)!important;}
   .topbar-search{max-width:none;}
   .profile-chip .p-text{display:none;}
   .page-title{font-size:19px;}
+
+  /* Every .table-c becomes a stack of labeled-field cards instead of a
+     wide table that needs horizontal scrolling -- a record can now take
+     several stacked lines, which is fine, as long as nothing scrolls
+     sideways. Each <td> needs a data-label attribute (added per-table in
+     the views) to show its column name inline; cells that don't need one
+     (an avatar/star cell, an actions toolbar, an empty-state message) get
+     class="td-plain" instead. */
+  .table-responsive-c{overflow-x:visible;border:none;}
+  .table-c{border:1px solid var(--border-color);border-radius:var(--radius-md);}
+  .table-c thead{display:none;}
+  .table-c,.table-c tbody,.table-c tr{display:block;width:100%;}
+  .table-c tbody tr{padding:10px 12px;border-bottom:1px solid var(--border-color);}
+  .table-c tbody tr:last-child{border-bottom:none;}
+  .table-c td{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:6px 0;border-bottom:none!important;text-align:right;white-space:normal;
+    overflow-wrap:anywhere;
+  }
+  .table-c td[data-label]::before{
+    content:attr(data-label);font-weight:700;color:var(--text-secondary);text-align:left;
+    font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;flex-shrink:0;margin-right:8px;
+  }
+  .table-c td.td-plain{justify-content:flex-start;text-align:left;}
 }

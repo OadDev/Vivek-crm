@@ -25,11 +25,11 @@ if (! function_exists('dataSheetSortLink')) {
       @forelse ($rows as $row)
         <tr>
           @foreach ($headers as $h)
-            <td>{{ $row->data[$h] ?? '—' }}</td>
+            <td data-label="{{ $h }}">{{ $row->data[$h] ?? '—' }}</td>
           @endforeach
         </tr>
       @empty
-        <tr><td colspan="{{ max(count($headers), 1) }}">
+        <tr><td colspan="{{ max(count($headers), 1) }}" class="td-plain">
           <div class="empty-state">
             <div class="es-icon"><i class="bi bi-search"></i></div>
             <h6>No rows found</h6>

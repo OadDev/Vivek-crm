@@ -53,14 +53,14 @@
         <tbody>
           @forelse ($products as $p)
           <tr>
-            <td class="fw-600">{{ $p->code }}</td>
-            <td>{{ $p->name }}</td>
-            <td>{{ $p->size ?: '—' }}</td>
-            <td>{{ $p->weight ?: '—' }}</td>
-            <td><span class="chip chip-info">{{ $p->unit }}</span></td>
-            <td class="fw-600">₹{{ number_format($p->rate, 2) }}</td>
-            <td class="small text-muted-c">{{ $p->specification ?: '—' }}</td>
-            <td>
+            <td class="fw-600" data-label="Code">{{ $p->code }}</td>
+            <td data-label="Product Name">{{ $p->name }}</td>
+            <td data-label="Size">{{ $p->size ?: '—' }}</td>
+            <td data-label="Weight">{{ $p->weight ?: '—' }}</td>
+            <td data-label="Unit"><span class="chip chip-info">{{ $p->unit }}</span></td>
+            <td class="fw-600" data-label="Rate">₹{{ number_format($p->rate, 2) }}</td>
+            <td class="small text-muted-c" data-label="Specification">{{ $p->specification ?: '—' }}</td>
+            <td class="td-plain">
               <div class="d-flex gap-1 justify-content-end">
                 <button type="button" class="btn-icon-sq js-edit-product"
                   data-id="{{ $p->id }}" data-code="{{ $p->code }}" data-name="{{ $p->name }}" data-size="{{ $p->size }}"
@@ -74,7 +74,7 @@
             </td>
           </tr>
           @empty
-          <tr><td colspan="8">
+          <tr><td colspan="8" class="td-plain">
             <div class="empty-state"><div class="es-icon"><i class="bi bi-box"></i></div><h6>No products found</h6><p>Try adjusting your search or filters, or add a new product.</p></div>
           </td></tr>
           @endforelse

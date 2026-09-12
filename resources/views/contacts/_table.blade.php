@@ -35,7 +35,7 @@ if (! function_exists('sortLink')) {
           @endforeach
         @endif
       @empty
-      <tr><td colspan="9">
+      <tr><td colspan="9" class="td-plain">
         <div class="empty-state">
           <div class="es-icon"><i class="bi bi-person-x"></i></div>
           <h6>No leads found</h6>
