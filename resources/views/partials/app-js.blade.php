@@ -74,6 +74,16 @@
   // awaited network request has usually already used up by the time its
   // .then() runs. Logging the click is done separately, in parallel,
   // without being waited on.
+  //
+  // There's deliberately no "fell back to the web version" logic here
+  // anymore: an earlier version tried to detect whether the app opened
+  // (via a timeout + visibilitychange) and, if not, redirected this same
+  // tab to wa.me. That detection is unreliable on real phones -- it can
+  // fire even when the app did open -- and when it misfires it replaces
+  // this tab's page with the wa.me page, so returning from WhatsApp lands
+  // on that instead of the CRM. Since WhatsApp is expected to be installed
+  // for this use case, doing nothing when the app link fails (leaving the
+  // user right where they were) is the safer default.
   document.body.addEventListener('click', function (e) {
     var waBtn = e.target.closest('.js-whatsapp-btn');
     if (!waBtn) return;
@@ -81,7 +91,6 @@
     e.preventDefault();
 
     var appLink = waBtn.getAttribute('href');
-    var webLink = waBtn.dataset.webLink;
     var logUrl = waBtn.dataset.logUrl;
 
     if (logUrl) {
@@ -94,15 +103,6 @@
       }
     }
 
-    var opened = false;
-    function onVisibilityChange() { if (document.hidden) { opened = true; } }
-    document.addEventListener('visibilitychange', onVisibilityChange);
     window.location.href = appLink;
-    setTimeout(function () {
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-      if (!opened && !document.hidden && webLink) {
-        window.location.href = webLink;
-      }
-    }, 1500);
   });
 })();

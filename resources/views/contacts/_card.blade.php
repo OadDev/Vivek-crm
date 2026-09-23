@@ -10,9 +10,9 @@
   $groupId = $groupId ?? null;
   $waTemplate = $waTemplate ?? null;
   $waMessage = $waTemplate ? $waTemplate->render(['name' => $contact->name, 'company' => $contact->company]) : '';
-  [$waAppLink, $waWebLink] = $contact->whatsapp
-      ? \App\Models\WhatsappMessage::previewLinks($contact->whatsapp, $waMessage)
-      : [null, null];
+  $waAppLink = $contact->whatsapp
+      ? \App\Models\WhatsappMessage::previewLinks($contact->whatsapp, $waMessage)[0]
+      : null;
 @endphp
 <div class="contact-card {{ $groupClass }}" data-href="{{ route('contacts.show', $contact) }}" style="{{ $hidden ? 'display:none;' : '' }}">
   <div class="contact-card-top">
@@ -39,7 +39,7 @@
   @if ($contact->email)<div class="small text-muted-c">{{ $contact->email }}</div>@endif
   <div class="contact-card-actions">
     @if ($contact->whatsapp)
-    <a href="{{ $waAppLink }}" class="btn-icon-sq success js-whatsapp-btn" data-web-link="{{ $waWebLink }}" data-log-url="{{ route('contacts.whatsapp', $contact) }}" title="WhatsApp (uses your saved template)"><i class="bi bi-whatsapp"></i></a>
+    <a href="{{ $waAppLink }}" class="btn-icon-sq success js-whatsapp-btn" data-log-url="{{ route('contacts.whatsapp', $contact) }}" title="WhatsApp (uses your saved template)"><i class="bi bi-whatsapp"></i></a>
     @endif
     @if ($contact->email)
     <a href="{{ route('gmail.index', ['search' => $contact->email]) }}" class="btn-icon-sq" title="Find in Gmail"><i class="bi bi-envelope-fill"></i></a>

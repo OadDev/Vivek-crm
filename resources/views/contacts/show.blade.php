@@ -4,9 +4,9 @@
 
 @php
   $waMessage = $waTemplate ? $waTemplate->render(['name' => $contact->name, 'company' => $contact->company]) : '';
-  [$waAppLink, $waWebLink] = $contact->whatsapp
-      ? \App\Models\WhatsappMessage::previewLinks($contact->whatsapp, $waMessage)
-      : [null, null];
+  $waAppLink = $contact->whatsapp
+      ? \App\Models\WhatsappMessage::previewLinks($contact->whatsapp, $waMessage)[0]
+      : null;
 @endphp
 
 @section('content')
@@ -39,7 +39,7 @@
           <a href="mailto:{{ $contact->email }}" class="btn-icon-sq" title="Email" data-bs-toggle="tooltip"><i class="bi bi-envelope-fill"></i></a>
           @endif
           @if ($contact->whatsapp)
-          <a href="{{ $waAppLink }}" class="btn-icon-sq success js-whatsapp-btn" data-web-link="{{ $waWebLink }}" data-log-url="{{ route('contacts.whatsapp', $contact) }}" title="WhatsApp (uses your saved template)" data-bs-toggle="tooltip"><i class="bi bi-whatsapp"></i></a>
+          <a href="{{ $waAppLink }}" class="btn-icon-sq success js-whatsapp-btn" data-log-url="{{ route('contacts.whatsapp', $contact) }}" title="WhatsApp (uses your saved template)" data-bs-toggle="tooltip"><i class="bi bi-whatsapp"></i></a>
           @endif
           <button type="button" class="btn-icon-sq" title="Edit" data-bs-toggle="modal" data-bs-target="#modalQuickEditContact"><i class="bi bi-pencil-fill"></i></button>
         </div>
@@ -132,7 +132,7 @@
                 @endif
               </div>
               @if ($contact->whatsapp)
-              <a href="{{ $waAppLink }}" class="btn btn-whatsapp-c btn-sm js-whatsapp-btn" data-web-link="{{ $waWebLink }}" data-log-url="{{ route('contacts.whatsapp', $contact) }}"><i class="bi bi-whatsapp me-1"></i>Send WhatsApp</a>
+              <a href="{{ $waAppLink }}" class="btn btn-whatsapp-c btn-sm js-whatsapp-btn" data-log-url="{{ route('contacts.whatsapp', $contact) }}"><i class="bi bi-whatsapp me-1"></i>Send WhatsApp</a>
               @endif
             </div>
             @if ($contact->whatsappMessages->first())

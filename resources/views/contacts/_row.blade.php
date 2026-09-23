@@ -11,9 +11,9 @@
   $groupId = $groupId ?? null;
   $waTemplate = $waTemplate ?? null;
   $waMessage = $waTemplate ? $waTemplate->render(['name' => $contact->name, 'company' => $contact->company]) : '';
-  [$waAppLink, $waWebLink] = $contact->whatsapp
-      ? \App\Models\WhatsappMessage::previewLinks($contact->whatsapp, $waMessage)
-      : [null, null];
+  $waAppLink = $contact->whatsapp
+      ? \App\Models\WhatsappMessage::previewLinks($contact->whatsapp, $waMessage)[0]
+      : null;
 @endphp
 <tr class="{{ $groupClass }} contact-row" data-href="{{ route('contacts.show', $contact) }}" style="cursor:pointer;{{ $hidden ? 'display:none;' : '' }}">
   <td class="td-plain">
@@ -55,7 +55,7 @@
   <td class="td-plain">
     <div class="d-flex gap-1 justify-content-end align-items-center" style="flex-wrap:nowrap;">
       @if ($contact->whatsapp)
-      <a href="{{ $waAppLink }}" class="btn-icon-sq success js-whatsapp-btn" data-web-link="{{ $waWebLink }}" data-log-url="{{ route('contacts.whatsapp', $contact) }}" title="WhatsApp (uses your saved template)" data-bs-toggle="tooltip"><i class="bi bi-whatsapp"></i></a>
+      <a href="{{ $waAppLink }}" class="btn-icon-sq success js-whatsapp-btn" data-log-url="{{ route('contacts.whatsapp', $contact) }}" title="WhatsApp (uses your saved template)" data-bs-toggle="tooltip"><i class="bi bi-whatsapp"></i></a>
       @endif
       @if ($contact->email)
       <a href="{{ route('gmail.index', ['search' => $contact->email]) }}" class="btn-icon-sq" title="Find in Gmail" data-bs-toggle="tooltip"><i class="bi bi-envelope-fill"></i></a>
