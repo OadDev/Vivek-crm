@@ -493,7 +493,7 @@ small,.text-muted-c{color:var(--text-secondary)!important;}
    ========================================================================== */
 .pagination-c{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 4px 0;flex-wrap:wrap;}
 .pagination-c .p-info{font-size:12.4px;color:var(--text-secondary);}
-.pagination-c .p-btns{display:flex;gap:4px;}
+.pagination-c .p-btns{display:flex;gap:4px;flex-wrap:wrap;max-width:100%;}
 .pagination-c .p-btn{
   width:32px;height:32px;border-radius:var(--radius-xs);border:1px solid var(--border-color);background:var(--bg-surface);
   color:var(--text-secondary);font-size:12.6px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer;
