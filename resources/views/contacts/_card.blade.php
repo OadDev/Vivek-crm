@@ -3,10 +3,17 @@
      minimal: no field labels, no avatar/star/priority -- just status,
      quote no., date, company, phone, email, and the same action menu as
      the desktop row, packed tightly per the client's reference design. --}}
-@php($groupClass = $groupClass ?? '')
-@php($hidden = $hidden ?? false)
-@php($groupCount = $groupCount ?? 1)
-@php($groupId = $groupId ?? null)
+@php
+  $groupClass = $groupClass ?? '';
+  $hidden = $hidden ?? false;
+  $groupCount = $groupCount ?? 1;
+  $groupId = $groupId ?? null;
+  $waTemplate = $waTemplate ?? null;
+  $waMessage = $waTemplate ? $waTemplate->render(['name' => $contact->name, 'company' => $contact->company]) : '';
+  [$waAppLink, $waWebLink] = $contact->whatsapp
+      ? \App\Models\WhatsappMessage::previewLinks($contact->whatsapp, $waMessage)
+      : [null, null];
+@endphp
 <div class="contact-card {{ $groupClass }}" data-href="{{ route('contacts.show', $contact) }}" style="{{ $hidden ? 'display:none;' : '' }}">
   <div class="contact-card-top">
     <div class="d-flex align-items-center gap-2" style="min-width:0;">
@@ -32,7 +39,7 @@
   @if ($contact->email)<div class="small text-muted-c">{{ $contact->email }}</div>@endif
   <div class="contact-card-actions">
     @if ($contact->whatsapp)
-    <a href="{{ route('contacts.whatsapp', $contact) }}" class="btn-icon-sq success js-whatsapp-btn" title="WhatsApp (uses your saved template)"><i class="bi bi-whatsapp"></i></a>
+    <a href="{{ $waAppLink }}" class="btn-icon-sq success js-whatsapp-btn" data-web-link="{{ $waWebLink }}" data-log-url="{{ route('contacts.whatsapp', $contact) }}" title="WhatsApp (uses your saved template)"><i class="bi bi-whatsapp"></i></a>
     @endif
     @if ($contact->email)
     <a href="{{ route('gmail.index', ['search' => $contact->email]) }}" class="btn-icon-sq" title="Find in Gmail"><i class="bi bi-envelope-fill"></i></a>

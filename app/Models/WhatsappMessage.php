@@ -53,4 +53,21 @@ class WhatsappMessage extends Model
 
         return 'whatsapp://send?phone='.$number.'&text='.rawurlencode($this->message);
     }
+
+    /**
+     * Same link-building logic as waAppLink()/waLink(), without needing a
+     * saved (or even persistable) record -- used to render a contact's
+     * WhatsApp button with real links already in the HTML, so the click
+     * handler can navigate the instant it's clicked instead of waiting on
+     * a network round-trip first (which breaks the whatsapp:// handoff on
+     * mobile browsers -- see app-js.blade.php).
+     *
+     * @return array{0: string, 1: string} [$appLink, $webLink]
+     */
+    public static function previewLinks(string $number, string $message): array
+    {
+        $preview = new self(['recipient_number' => $number, 'message' => $message]);
+
+        return [$preview->waAppLink(), $preview->waLink()];
+    }
 }

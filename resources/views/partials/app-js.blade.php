@@ -65,30 +65,44 @@
   });
 
   // WhatsApp buttons (Contacts list + contact profile page) ------------------
-  // Fetch the app/web links in the background instead of navigating there
-  // first, so a successful whatsapp:// handoff never takes you off the
-  // current page at all -- only the wa.me fallback (no WhatsApp app
-  // installed) is a real page navigation.
+  // The href is already the real whatsapp:// link (rendered server-side --
+  // see contacts/_row.blade.php etc.) so we can navigate the instant this
+  // click fires. Waiting on a fetch() first (as an earlier version of this
+  // did) breaks the redirect on real mobile browsers: navigating to a
+  // custom scheme like whatsapp:// is only honored while it's still
+  // "inside" the original tap/click's user-activation window, which an
+  // awaited network request has usually already used up by the time its
+  // .then() runs. Logging the click is done separately, in parallel,
+  // without being waited on.
   document.body.addEventListener('click', function (e) {
     var waBtn = e.target.closest('.js-whatsapp-btn');
     if (!waBtn) return;
 
     e.preventDefault();
-    var waHref = waBtn.getAttribute('href');
-    fetch(waHref, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        var opened = false;
-        function onVisibilityChange() { if (document.hidden) { opened = true; } }
-        document.addEventListener('visibilitychange', onVisibilityChange);
-        window.location.href = data.appLink;
-        setTimeout(function () {
-          document.removeEventListener('visibilitychange', onVisibilityChange);
-          if (!opened && !document.hidden) {
-            window.location.href = data.webLink;
-          }
-        }, 1500);
-      })
-      .catch(function () { window.location.href = waHref; });
+
+    var appLink = waBtn.getAttribute('href');
+    var webLink = waBtn.dataset.webLink;
+    var logUrl = waBtn.dataset.logUrl;
+
+    if (logUrl) {
+      if (navigator.sendBeacon) {
+        var body = new FormData();
+        body.append('_token', window.APP_CSRF);
+        navigator.sendBeacon(logUrl, body);
+      } else {
+        fetch(logUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': window.APP_CSRF }, keepalive: true }).catch(function () {});
+      }
+    }
+
+    var opened = false;
+    function onVisibilityChange() { if (document.hidden) { opened = true; } }
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.location.href = appLink;
+    setTimeout(function () {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      if (!opened && !document.hidden && webLink) {
+        window.location.href = webLink;
+      }
+    }, 1500);
   });
 })();

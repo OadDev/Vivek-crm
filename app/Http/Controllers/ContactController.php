@@ -140,12 +140,13 @@ class ContactController extends Controller
         $counts['all_statuses'] = (clone $statusScopeQuery)->count();
 
         $effectiveFilterStatus = $filterStatus ?: 'all';
+        $waTemplate = $this->resolveWhatsappTemplate();
 
         if ($request->ajax()) {
-            return view('contacts._table', compact('contacts', 'sort', 'dir', 'perPage'));
+            return view('contacts._table', compact('contacts', 'sort', 'dir', 'perPage', 'waTemplate'));
         }
 
-        return view('contacts.index', compact('contacts', 'sort', 'dir', 'perPage', 'syncSetting', 'view', 'counts', 'statusCounts', 'effectiveFilterStatus'));
+        return view('contacts.index', compact('contacts', 'sort', 'dir', 'perPage', 'syncSetting', 'view', 'counts', 'statusCounts', 'effectiveFilterStatus', 'waTemplate'));
     }
 
     public function store(Request $request)
@@ -166,8 +167,9 @@ class ContactController extends Controller
     public function show(Contact $contact)
     {
         $contact->load(['emailConversations.messages', 'whatsappMessages.template']);
+        $waTemplate = $this->resolveWhatsappTemplate();
 
-        return view('contacts.show', compact('contact'));
+        return view('contacts.show', compact('contact', 'waTemplate'));
     }
 
     public function update(Request $request, Contact $contact)
@@ -235,25 +237,40 @@ class ContactController extends Controller
     }
 
     /**
-     * One-click WhatsApp: render the sender's personal default template if
-     * they've set one, else the company default, and hand off straight to
-     * whatsapp:// (falling back to wa.me client-side) — no picker.
+     * The template rendering used by the WhatsApp button is identical for
+     * every contact on the page -- only the {name}/{company} substitution
+     * varies per contact -- so this resolves it once per request instead
+     * of once per row (avoiding an N+1 WhatsappTemplate lookup).
+     */
+    protected function resolveWhatsappTemplate(): ?WhatsappTemplate
+    {
+        $templateId = auth()->user()->whatsapp_default_template_id ?: Setting::get('whatsapp_default_template_id');
+
+        return $templateId ? WhatsappTemplate::find($templateId) : null;
+    }
+
+    /**
+     * Fire-and-forget logging for a WhatsApp button click -- the actual
+     * whatsapp:// / wa.me links are already rendered into the button by
+     * the view (see resolveWhatsappTemplate() + WhatsappMessage::previewLinks()),
+     * so this only needs to record that it happened. Called via
+     * navigator.sendBeacon()/fetch(keepalive) without the click handler
+     * waiting on it -- see the whatsapp click handler in app-js.blade.php
+     * for why waiting on a request here would break the redirect itself.
      */
     public function whatsapp(Contact $contact)
     {
         if (! $contact->whatsapp) {
-            return redirect()->back()->with('error', 'This contact has no WhatsApp number.');
+            return response()->noContent();
         }
 
-        $user = auth()->user();
-        $templateId = $user->whatsapp_default_template_id ?: Setting::get('whatsapp_default_template_id');
-        $template = $templateId ? WhatsappTemplate::find($templateId) : null;
+        $template = $this->resolveWhatsappTemplate();
 
         $message = $template
             ? $template->render(['name' => $contact->name, 'company' => $contact->company])
             : '';
 
-        $whatsappMessage = WhatsappMessage::create([
+        WhatsappMessage::create([
             'contact_id' => $contact->id,
             'whatsapp_template_id' => $template?->id,
             'recipient_name' => $contact->name,
@@ -266,22 +283,7 @@ class ContactController extends Controller
 
         Activity::log("WhatsApp opened for <b>{$contact->name}</b>", 'bi-whatsapp', 'success', $contact);
 
-        // The Contacts list fetches this in the background (see the
-        // whatsapp click handler in index.blade.php) so it can try
-        // whatsapp:// without ever navigating the page away -- only the
-        // full-page view below is used as a plain-link fallback (e.g. if
-        // JS is disabled, or opened directly).
-        if (request()->wantsJson()) {
-            return response()->json([
-                'appLink' => $whatsappMessage->waAppLink(),
-                'webLink' => $whatsappMessage->waLink(),
-            ]);
-        }
-
-        return view('contacts.whatsapp-redirect', [
-            'appLink' => $whatsappMessage->waAppLink(),
-            'webLink' => $whatsappMessage->waLink(),
-        ]);
+        return response()->noContent();
     }
 
     public function remind(Request $request, Contact $contact)

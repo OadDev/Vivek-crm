@@ -80,7 +80,7 @@ Route::middleware('auth')->group(function () {
         Route::patch('/{contact}/unarchive', [ContactController::class, 'unarchive'])->name('unarchive');
         Route::patch('/{contact}/won', [ContactController::class, 'markWon'])->name('won');
         Route::patch('/{contact}/unwon', [ContactController::class, 'unmarkWon'])->name('unwon');
-        Route::get('/{contact}/whatsapp', [ContactController::class, 'whatsapp'])->name('whatsapp');
+        Route::post('/{contact}/whatsapp', [ContactController::class, 'whatsapp'])->name('whatsapp');
         Route::post('/{contact}/remind', [ContactController::class, 'remind'])->name('remind');
     });
 
