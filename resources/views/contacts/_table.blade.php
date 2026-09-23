@@ -11,7 +11,7 @@ if (! function_exists('sortLink')) {
     }
 }
 @endphp
-<div class="table-responsive-c">
+<div class="table-responsive-c d-none d-md-block">
   <table class="table-c">
     <thead>
       <tr>
@@ -45,6 +45,25 @@ if (! function_exists('sortLink')) {
       @endforelse
     </tbody>
   </table>
+</div>
+
+{{-- Compact cards, shown only below the md breakpoint instead of the table
+     above -- see contacts/_card.blade.php. --}}
+<div class="d-md-none">
+  @forelse ($contacts as $group)
+    @include('contacts._card', ['contact' => $group->primary, 'groupCount' => $group->count, 'groupId' => $group->primary->id])
+    @if ($group->count > 1)
+      @foreach ($group->others as $other)
+        @include('contacts._card', ['contact' => $other, 'groupClass' => 'group-'.$group->primary->id, 'hidden' => true])
+      @endforeach
+    @endif
+  @empty
+    <div class="empty-state">
+      <div class="es-icon"><i class="bi bi-person-x"></i></div>
+      <h6>No leads found</h6>
+      <p>Try adjusting your search or filters, or add a new contact.</p>
+    </div>
+  @endforelse
 </div>
 
 <div class="pagination-c">

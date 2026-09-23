@@ -246,9 +246,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
       // (WhatsApp buttons are handled globally in partials/app-js.blade.php.)
 
-      // Whole-row click opens the contact's profile, except when the click
-      // landed on an actual control (link/button/form field) inside it.
-      var row = e.target.closest('tr[data-href]');
+      // Whole-row (desktop <tr> or mobile .contact-card) click opens the
+      // contact's profile, except when the click landed on an actual
+      // control (link/button/form field) inside it.
+      var row = e.target.closest('[data-href]');
       if (row && !e.target.closest('a, button, form, input, select')) {
         window.location.href = row.dataset.href;
       }

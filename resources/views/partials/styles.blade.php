@@ -351,6 +351,17 @@ small,.text-muted-c{color:var(--text-secondary)!important;}
 .table-c tbody tr:hover{background:var(--bg-surface-2);}
 .table-c tbody tr:last-child td{border-bottom:none;}
 .table-responsive-c{overflow-x:auto;border-radius:var(--radius-md);border:1px solid var(--border-color);}
+
+/* Compact mobile card for Contacts (resources/views/contacts/_card.blade.php)
+   -- deliberately dense per the client's reference: no field labels, just
+   status+quote no.+date on one line, bold company, phone, muted email, and
+   a tight action-icon row. Shown only below the md breakpoint via the
+   d-md-none/d-none d-md-block wrappers in _table.blade.php. */
+.contact-card{padding:10px 4px;border-bottom:1px solid var(--border-color);cursor:pointer;}
+.contact-card:last-child{border-bottom:none;}
+.contact-card-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:3px;}
+.contact-card-company{font-weight:700;font-size:15px;color:var(--text-primary);margin-bottom:2px;}
+.contact-card-actions{display:flex;gap:6px;margin-top:8px;}
 .avatar-circle{
   width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
   font-weight:700;font-size:13px;color:#fff;flex-shrink:0;
