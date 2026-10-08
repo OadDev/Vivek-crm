@@ -1,3 +1,10 @@
+# Force index.php ahead of any pre-existing placeholder index.html --
+# some hosts (e.g. a freshly created subdomain on shared hosting) seed a
+# default "coming soon" / 404-style index.html in a new document root,
+# which otherwise silently wins over index.php and the rewrite rules
+# below never even run.
+DirectoryIndex index.php index.html
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
