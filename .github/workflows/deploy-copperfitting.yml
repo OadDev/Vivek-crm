@@ -133,7 +133,13 @@ jobs:
 
       # Single-file uploads -- lftp's `put` has no dry-run equivalent, so
       # these are just skipped (and printed) when dry_run is on.
-      - name: Upload front controller (index.php) and app/.htaccess
+      #
+      # extract-bundle.php is uploaded here too (even though this workflow
+      # itself doesn't need it) so the cron job in deploy/README-copperfitting.md
+      # can unconditionally run it before app:deploy-finalize regardless of
+      # whether this workflow or a manual zip upload was used to deploy --
+      # it's a no-op when there's no app-bundle.zip waiting.
+      - name: Upload front controller (index.php), app/.htaccess, and extract-bundle.php
         env:
           FTP_HOST: ${{ secrets.CLIENT_FTP_HOST }}
           FTP_USER: ${{ secrets.CLIENT_FTP_USERNAME }}
@@ -144,6 +150,7 @@ jobs:
           if [ "$DRY_RUN" = "true" ]; then
             echo "[dry run] would upload deploy/hostinger-index.php -> $FTP_PATH/index.php"
             echo "[dry run] would upload deploy/app-htaccess -> $FTP_PATH/app/.htaccess"
+            echo "[dry run] would upload deploy/extract-bundle.php -> $FTP_PATH/app/extract-bundle.php"
             exit 0
           fi
 
@@ -154,6 +161,7 @@ jobs:
           set cmd:fail-exit true
           put ./deploy/hostinger-index.php -o "$FTP_PATH/index.php"
           put ./deploy/app-htaccess -o "$FTP_PATH/app/.htaccess"
+          put ./deploy/extract-bundle.php -o "$FTP_PATH/app/extract-bundle.php"
           bye
           EOF
 
