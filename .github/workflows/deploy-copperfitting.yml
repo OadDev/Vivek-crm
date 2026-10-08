@@ -1,0 +1,130 @@
+name: Deploy to crm.copperfitting.in (FTP)
+
+# Manual trigger only, on purpose: this is a brand-new deploy target on a
+# hosting account that also serves other live sites (including the main
+# copperfitting.in WordPress site), so it shouldn't fire automatically on
+# every push to main the way the Hostinger workflow does. Run it by hand
+# from the Actions tab until it's been verified end-to-end, with dry_run
+# left on for the first run.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Preview only -- list what would be uploaded without actually transferring anything'
+        type: boolean
+        default: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, zip, bcmath
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
+
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      # IMPORTANT: this hosting account has other live sites on it. Every
+      # remote path below is scoped under CLIENT_FTP_PATH (i.e.
+      # public_html/crm.copperfitting.in) -- never widen these to a parent
+      # directory. Nothing in this workflow ever deletes remote files (no
+      # --delete, no rm), so at worst a wrong path adds files somewhere --
+      # it can't remove or overwrite anything outside this subdomain's
+      # folder.
+      #
+      # Same two-part layout as the Hostinger deploy: everything except
+      # public/ goes into CLIENT_FTP_PATH/app/ (vendor, app code, etc, kept
+      # out of the actual webroot), and deploy/hostinger-index.php /
+      # deploy/app-htaccess (uploaded in the next step) make that work --
+      # see those files' own comments for why.
+      - name: Upload app bundle (vendor, app, bootstrap, etc.) to CLIENT_FTP_PATH/app
+        env:
+          FTP_HOST: ${{ secrets.CLIENT_FTP_HOST }}
+          FTP_USER: ${{ secrets.CLIENT_FTP_USERNAME }}
+          FTP_PASS: ${{ secrets.CLIENT_FTP_PASSWORD }}
+          FTP_PATH: ${{ secrets.CLIENT_FTP_PATH }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          DRY_RUN_FLAG=""
+          [ "$DRY_RUN" = "true" ] && DRY_RUN_FLAG="--dry-run"
+
+          lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" <<EOF
+          set cmd:fail-exit true
+          mkdir -p -f "$FTP_PATH/app"
+          mirror --reverse $DRY_RUN_FLAG --verbose \
+            --exclude-glob .git/ --exclude-glob .github/ --exclude-glob tests/ \
+            --exclude-glob .env --exclude-glob public/ --exclude-glob deploy/ \
+            --exclude-glob node_modules/ \
+            ./ "$FTP_PATH/app/"
+          bye
+          EOF
+
+      # Copies public/ contents (assets, .htaccess, favicon, robots.txt) to
+      # the subdomain's webroot itself. index.php is excluded here and
+      # deployed separately in the next step (a modified version pointing
+      # into app/).
+      - name: Upload public assets to CLIENT_FTP_PATH
+        env:
+          FTP_HOST: ${{ secrets.CLIENT_FTP_HOST }}
+          FTP_USER: ${{ secrets.CLIENT_FTP_USERNAME }}
+          FTP_PASS: ${{ secrets.CLIENT_FTP_PASSWORD }}
+          FTP_PATH: ${{ secrets.CLIENT_FTP_PATH }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          DRY_RUN_FLAG=""
+          [ "$DRY_RUN" = "true" ] && DRY_RUN_FLAG="--dry-run"
+
+          lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" <<EOF
+          set cmd:fail-exit true
+          mirror --reverse $DRY_RUN_FLAG --verbose \
+            --exclude-glob index.php \
+            ./public/ "$FTP_PATH/"
+          bye
+          EOF
+
+      # Single-file uploads -- lftp's `put` has no dry-run equivalent, so
+      # these are just skipped (and printed) when dry_run is on.
+      - name: Upload front controller (index.php) and app/.htaccess
+        env:
+          FTP_HOST: ${{ secrets.CLIENT_FTP_HOST }}
+          FTP_USER: ${{ secrets.CLIENT_FTP_USERNAME }}
+          FTP_PASS: ${{ secrets.CLIENT_FTP_PASSWORD }}
+          FTP_PATH: ${{ secrets.CLIENT_FTP_PATH }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "[dry run] would upload deploy/hostinger-index.php -> $FTP_PATH/index.php"
+            echo "[dry run] would upload deploy/app-htaccess -> $FTP_PATH/app/.htaccess"
+            exit 0
+          fi
+
+          lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" <<EOF
+          set cmd:fail-exit true
+          put ./deploy/hostinger-index.php -o "$FTP_PATH/index.php"
+          put ./deploy/app-htaccess -o "$FTP_PATH/app/.htaccess"
+          bye
+          EOF
+
+      # No SSH on this account, so nothing here can run `artisan migrate`
+      # etc. directly. app:deploy-finalize (App\Console\Commands\DeployFinalize)
+      # does that job instead, server-side, triggered by a cron job you set
+      # up once in the hosting panel -- see the PR/commit description for
+      # the exact cron command. It bootstraps .env on the very first run
+      # (so /setup becomes reachable), and is safe to run repeatedly/on a
+      # schedule after that.
+      - name: Remote command reminder
+        if: ${{ inputs.dry_run != 'true' }}
+        run: |
+          echo "Upload complete. This hosting account has no SSH, so migrations/cache rebuild"
+          echo "are handled by a cron job running 'php artisan app:deploy-finalize' instead --"
+          echo "make sure that cron job is set up (see deploy/README-copperfitting.md)."
