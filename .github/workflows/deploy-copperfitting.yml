@@ -39,6 +39,13 @@ jobs:
       # that only allows certain IPs and silently drops everything else,
       # which otherwise shows up as the *next* step hanging for a very long
       # time instead of a clear error here.
+      #
+      # ssl:verify-certificate no (used here and below): this host
+      # auto-negotiates TLS, but its certificate's common name doesn't match
+      # ftp.copperfitting.in (confirmed by a real failed run) -- typical of
+      # shared hosting, where the cert is issued for the server's own
+      # hostname, not each customer's custom FTP subdomain. The connection
+      # is still encrypted; this only skips the hostname-match check.
       - name: Test FTP connection
         env:
           FTP_HOST: ${{ secrets.CLIENT_FTP_HOST }}
@@ -50,6 +57,7 @@ jobs:
           set net:timeout 15
           set net:max-retries 2
           set net:reconnect-interval-base 3
+          set ssl:verify-certificate no
           set cmd:fail-exit true
           pwd
           ls "$FTP_PATH" || echo "($FTP_PATH doesn't exist yet on the server -- that's fine on a first deploy, it gets created below)"
@@ -94,6 +102,7 @@ jobs:
           set net:max-retries 3
           set net:reconnect-interval-base 5
           set mirror:parallel-transfer-count 4
+          set ssl:verify-certificate no
           set cmd:fail-exit true
           mkdir -p -f "$FTP_PATH/app"
           mirror --reverse $DRY_RUN_FLAG --verbose \
@@ -124,6 +133,7 @@ jobs:
           set net:max-retries 3
           set net:reconnect-interval-base 5
           set mirror:parallel-transfer-count 4
+          set ssl:verify-certificate no
           set cmd:fail-exit true
           mirror --reverse $DRY_RUN_FLAG --verbose \
             --exclude-glob index.php \
@@ -158,6 +168,7 @@ jobs:
           set net:timeout 20
           set net:max-retries 3
           set net:reconnect-interval-base 5
+          set ssl:verify-certificate no
           set cmd:fail-exit true
           put ./deploy/hostinger-index.php -o "$FTP_PATH/index.php"
           put ./deploy/app-htaccess -o "$FTP_PATH/app/.htaccess"
