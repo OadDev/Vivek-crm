@@ -173,7 +173,7 @@ jobs:
       # (so /setup becomes reachable), and is safe to run repeatedly/on a
       # schedule after that.
       - name: Remote command reminder
-        if: ${{ inputs.dry_run != 'true' }}
+        if: ${{ inputs.dry_run == false }}
         run: |
           echo "Upload complete. This hosting account has no SSH, so migrations/cache rebuild"
           echo "are handled by a cron job running 'php artisan app:deploy-finalize' instead --"
