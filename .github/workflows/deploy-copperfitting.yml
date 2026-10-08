@@ -34,6 +34,28 @@ jobs:
       - name: Install lftp
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
 
+      # Fails fast (~30s) if the connection itself is the problem -- wrong
+      # host/port, credentials, or (common on small shared hosts) a firewall
+      # that only allows certain IPs and silently drops everything else,
+      # which otherwise shows up as the *next* step hanging for a very long
+      # time instead of a clear error here.
+      - name: Test FTP connection
+        env:
+          FTP_HOST: ${{ secrets.CLIENT_FTP_HOST }}
+          FTP_USER: ${{ secrets.CLIENT_FTP_USERNAME }}
+          FTP_PASS: ${{ secrets.CLIENT_FTP_PASSWORD }}
+          FTP_PATH: ${{ secrets.CLIENT_FTP_PATH }}
+        run: |
+          timeout 45 lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" <<EOF
+          set net:timeout 15
+          set net:max-retries 2
+          set net:reconnect-interval-base 3
+          set cmd:fail-exit true
+          pwd
+          ls "$FTP_PATH" || echo "($FTP_PATH doesn't exist yet on the server -- that's fine on a first deploy, it gets created below)"
+          bye
+          EOF
+
       # IMPORTANT: this hosting account has other live sites on it. Every
       # remote path below is scoped under CLIENT_FTP_PATH (i.e.
       # public_html/crm.copperfitting.in) -- never widen these to a parent
@@ -47,7 +69,16 @@ jobs:
       # out of the actual webroot), and deploy/hostinger-index.php /
       # deploy/app-htaccess (uploaded in the next step) make that work --
       # see those files' own comments for why.
+      #
+      # vendor/ alone is thousands of files across hundreds of directories,
+      # and this host takes roughly 1-1.5s per directory listing -- a timed
+      # test run confirmed the connection/credentials/path all work fine,
+      # it's just genuinely slow the first time (observed ~13 minutes to get
+      # partway through a single vendor package). Only the very first full
+      # deploy pays this cost in full -- lftp skips files that already match
+      # on the remote, so later deploys only transfer what actually changed.
       - name: Upload app bundle (vendor, app, bootstrap, etc.) to CLIENT_FTP_PATH/app
+        timeout-minutes: 90
         env:
           FTP_HOST: ${{ secrets.CLIENT_FTP_HOST }}
           FTP_USER: ${{ secrets.CLIENT_FTP_USERNAME }}
@@ -59,6 +90,10 @@ jobs:
           [ "$DRY_RUN" = "true" ] && DRY_RUN_FLAG="--dry-run"
 
           lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" <<EOF
+          set net:timeout 20
+          set net:max-retries 3
+          set net:reconnect-interval-base 5
+          set mirror:parallel-transfer-count 4
           set cmd:fail-exit true
           mkdir -p -f "$FTP_PATH/app"
           mirror --reverse $DRY_RUN_FLAG --verbose \
@@ -84,7 +119,11 @@ jobs:
           DRY_RUN_FLAG=""
           [ "$DRY_RUN" = "true" ] && DRY_RUN_FLAG="--dry-run"
 
-          lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" <<EOF
+          timeout 600 lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" <<EOF
+          set net:timeout 20
+          set net:max-retries 3
+          set net:reconnect-interval-base 5
+          set mirror:parallel-transfer-count 4
           set cmd:fail-exit true
           mirror --reverse $DRY_RUN_FLAG --verbose \
             --exclude-glob index.php \
@@ -108,7 +147,10 @@ jobs:
             exit 0
           fi
 
-          lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" <<EOF
+          timeout 120 lftp -u "$FTP_USER,$FTP_PASS" "$FTP_HOST" <<EOF
+          set net:timeout 20
+          set net:max-retries 3
+          set net:reconnect-interval-base 5
           set cmd:fail-exit true
           put ./deploy/hostinger-index.php -o "$FTP_PATH/index.php"
           put ./deploy/app-htaccess -o "$FTP_PATH/app/.htaccess"
