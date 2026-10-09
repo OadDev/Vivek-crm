@@ -55,4 +55,5 @@ jobs:
         with:
           name: crm-copperfitting-bundle
           path: dist/
+          include-hidden-files: true
           retention-days: 3
