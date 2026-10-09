@@ -11,7 +11,9 @@
 // sibling discussion of this). Safe to run repeatedly.
 //
 // Protected by a token that is NEVER committed to this (public) repo --
-// it's read from app/storage/app/deploy_token.txt, a file you create
+// it's read from app/deploy_token.txt (app/ already exists once the code
+// bundle is uploaded, unlike storage/ subfolders which may not if hidden
+// files were skipped during a manual FTP upload), a file you create
 // yourself and upload separately via FTP. Visit:
 //   https://your-domain/deploy-finalize.php?token=YOUR_SECRET
 //
@@ -20,11 +22,11 @@
 // idempotent, but removing it is better hygiene.
 
 $appDir = __DIR__.'/app';
-$tokenFile = $appDir.'/storage/app/deploy_token.txt';
+$tokenFile = $appDir.'/deploy_token.txt';
 
 if (! file_exists($tokenFile)) {
     http_response_code(403);
-    exit("Not configured -- upload app/storage/app/deploy_token.txt first (a plain text file containing a secret string you choose).\n");
+    exit("Not configured -- upload app/deploy_token.txt first (a plain text file containing a secret string you choose).\n");
 }
 
 $expected = trim(file_get_contents($tokenFile));
