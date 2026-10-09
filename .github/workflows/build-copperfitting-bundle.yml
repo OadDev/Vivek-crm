@@ -1,0 +1,57 @@
+name: Build crm.copperfitting.in bundle (for manual FTP upload)
+
+# Builds the exact file layout the FTP deploy workflow would otherwise
+# upload itself, and publishes it as a downloadable GitHub Actions
+# artifact instead -- useful when the FTP connection from this runner is
+# unreliable (e.g. rate-limited by the host) and uploading manually via a
+# regular FTP client from your own machine is more likely to succeed.
+#
+# The artifact's contents are already laid out to match the FTP root
+# exactly (see deploy/hostinger-index.php and deploy/app-htaccess for why
+# the app/ split exists) -- extract it locally and upload everything
+# inside straight into the FTP session's root, no renaming or
+# reorganizing needed.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, zip, bcmath
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
+
+      - name: Assemble the FTP-root-ready layout
+        run: |
+          mkdir -p dist/app
+          rsync -a --exclude='.git' --exclude='.github' --exclude='tests' \
+            --exclude='.env' --exclude='public' --exclude='deploy' --exclude='node_modules' \
+            --exclude='dist' \
+            ./ dist/app/
+          cp deploy/app-htaccess dist/app/.htaccess
+          cp deploy/extract-bundle.php dist/app/extract-bundle.php
+          cp deploy/hostinger-index.php dist/index.php
+          cp public/.htaccess dist/.htaccess
+          cp public/favicon.ico dist/favicon.ico
+          cp public/robots.txt dist/robots.txt
+          echo "--- dist/ top level ---"
+          ls -la dist/
+          echo "--- dist size ---"
+          du -sh dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: crm-copperfitting-bundle
+          path: dist/
+          retention-days: 3
