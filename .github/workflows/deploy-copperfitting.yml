@@ -161,6 +161,7 @@ jobs:
             echo "[dry run] would upload deploy/hostinger-index.php -> $FTP_PATH/index.php"
             echo "[dry run] would upload deploy/app-htaccess -> $FTP_PATH/app/.htaccess"
             echo "[dry run] would upload deploy/extract-bundle.php -> $FTP_PATH/app/extract-bundle.php"
+            echo "[dry run] would upload deploy/deploy-finalize.php -> $FTP_PATH/deploy-finalize.php"
             exit 0
           fi
 
@@ -173,6 +174,7 @@ jobs:
           put ./deploy/hostinger-index.php -o "$FTP_PATH/index.php"
           put ./deploy/app-htaccess -o "$FTP_PATH/app/.htaccess"
           put ./deploy/extract-bundle.php -o "$FTP_PATH/app/extract-bundle.php"
+          put ./deploy/deploy-finalize.php -o "$FTP_PATH/deploy-finalize.php"
           bye
           EOF
 

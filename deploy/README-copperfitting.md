@@ -1,88 +1,80 @@
 # Deploying to crm.copperfitting.in
 
-This subdomain is deployed over FTP, because this hosting account has no SSH
-access. There are two ways to get the files up there -- pick whichever's
-easier. Either way, one manual one-time setup step is needed on the server
-side afterward (the cron job, step 2 below).
+This subdomain is deployed over FTP, because this hosting account has no SSH,
+panel, or terminal access available to anyone on this -- the FTP account
+(`u829428207.orbit`) is the only capability. Its root (`/`) turned out to
+already *be* the subdomain's real document root (confirmed by finding
+Hostinger's own placeholder `default.php` sitting there) -- not nested under
+`public_html/`, despite that being the first guess. `CLIENT_FTP_PATH` is set
+to `.` accordingly.
 
-## 1a. Run the GitHub Actions deploy workflow
+## 1. Get the files up
 
-GitHub → **Actions** tab → **Deploy to crm.copperfitting.in (FTP)** → **Run workflow**.
+Either:
 
-- First run: leave **dry_run** checked (the default). This only lists what
-  *would* be uploaded -- nothing is transferred. Check the step logs and
-  confirm every path printed starts with `public_html/crm.copperfitting.in/`
-  and nothing else.
-- Once that looks right, run it again with **dry_run** unchecked to actually
-  upload.
+- **GitHub Actions workflow**: Actions tab → **Deploy to crm.copperfitting.in
+  (FTP)** → **Run workflow**. Leave **dry_run** checked first, check the log,
+  then run again with it unchecked. `vendor/` alone is ~25,000 files, so the
+  very first full run can take a long time (seen as long as ~70 minutes) --
+  the workflow allows up to 90 minutes for it. Later runs are much faster
+  since only changed files transfer.
+- **Or manually via FileZilla**: Actions tab → **Build crm.copperfitting.in
+  bundle (for manual FTP upload)** → Run workflow → download the resulting
+  artifact from the run's summary page once it finishes → extract it →
+  upload everything *inside* the extracted folder (`app/`, `index.php`,
+  `.htaccess`, `favicon.ico`, `robots.txt`) directly into the FTP root. This
+  avoids the ~25,000-small-files slowness, but still uploads them
+  individually, which can itself take a long time depending on the
+  connection -- if FileZilla reports failed transfers at the end, use
+  "Reset and requeue selected files" on just the failed ones rather than
+  starting over.
 
-Note: `vendor/` alone is ~25,000 files across hundreds of directories, and
-this host takes roughly 1-1.5s per directory listing, so the very first full
-run can take a while (the workflow allows up to 90 minutes for it). Every
-run after that is much faster, since it only transfers what changed.
+Either way, never upload the *containing* folder itself (e.g. a
+`crm-copperfitting-bundle` wrapper) -- only its contents, straight into `/`.
 
-## 1b. Or upload a pre-built zip manually (faster for the first deploy)
+## 2. Finish installation (no SSH, no cron, no terminal)
 
-Since the file-by-file sync above is slow the first time, it's often faster
-to upload one big zip instead of ~25,000 small files individually. Using
-your own FTP client (FileZilla, Cyberduck, etc.):
+FTP alone can't run `artisan` commands, and if nobody involved has
+panel/cron access either, the fallback is `deploy-finalize.php` --
+a small, token-protected script that runs `app:deploy-finalize`
+(bootstraps `.env` with a generated app key, runs pending migrations,
+rebuilds caches) when visited in a browser. It's already uploaded to the FTP
+root by both methods above. To use it:
 
-1. Create `public_html/crm.copperfitting.in/app/` if it doesn't exist yet.
-2. Upload `app-bundle.zip` into `public_html/crm.copperfitting.in/app/app-bundle.zip`.
-3. Upload `deploy/extract-bundle.php` into `public_html/crm.copperfitting.in/app/extract-bundle.php`.
-4. Upload `deploy/app-htaccess` into `public_html/crm.copperfitting.in/app/.htaccess`.
-5. Upload `deploy/hostinger-index.php` into `public_html/crm.copperfitting.in/index.php`
-   (renamed to `index.php` -- note it's going in the *parent* folder, not `app/`).
-6. Upload `public-assets.zip`'s contents (`.htaccess`, `favicon.ico`,
-   `robots.txt`) directly into `public_html/crm.copperfitting.in/` (the
-   same parent folder as index.php -- these are tiny, no extraction needed).
+1. Make up a random secret string (anything long and hard to guess).
+2. Create a plain text file containing just that string, nothing else, and
+   upload it via FTP to `app/storage/app/deploy_token.txt` (that directory
+   already exists once the app bundle is uploaded).
+3. Visit `https://crm.copperfitting.in/deploy-finalize.php?token=YOUR_SECRET`
+   in a browser. First run creates `.env` and stops there (it won't attempt
+   migrations before a database is configured) -- you should see something
+   like "Application key set successfully" in the plain-text response.
+4. Visit `https://crm.copperfitting.in/setup` and run the Setup Wizard --
+   enter the database credentials for this subdomain's own MySQL database
+   (create one in the hosting panel first, separate from the other sites on
+   this account) and create the first admin account. This step runs
+   migrations itself, as part of the wizard.
+5. For any *future* code deploy that adds new migrations, re-upload the
+   changed files (step 1) then visit the `deploy-finalize.php` URL again to
+   run them -- it's idempotent and safe to run repeatedly.
+6. Once everything works, delete `deploy-finalize.php` and
+   `app/storage/app/deploy_token.txt` via FTP. Leaving them is low-risk
+   (token-gated, and the underlying command is idempotent) but removing them
+   is better hygiene.
 
-The zip itself doesn't get extracted by your FTP client -- that happens on
-the server the next time `extract-bundle.php` runs, which the cron job
-below takes care of (it runs the extractor before `app:deploy-finalize` on
-every tick, and it's a no-op once there's no zip left waiting).
-
-## 2. Set up the cron job (one-time)
-
-FTP can't run commands on the server, so a cron job takes the place of the
-`artisan migrate` / cache-rebuild step the SSH-based Hostinger deploy does
-automatically -- and, if you used the manual zip upload (1b), the same cron
-job also extracts app-bundle.zip once it sees it. In the hosting panel's
-**Cron Jobs** section, add:
-
-```
-*/15 * * * * php /home/u829428207/public_html/crm.copperfitting.in/app/extract-bundle.php >> /home/u829428207/crm-deploy-finalize.log 2>&1 && php /home/u829428207/public_html/crm.copperfitting.in/app/artisan app:deploy-finalize >> /home/u829428207/crm-deploy-finalize.log 2>&1
-```
-
-(If you only used the GitHub Actions workflow (1a) and never upload a zip,
-`extract-bundle.php` just prints "nothing to extract" and exits -- harmless
-either way, so this one cron line covers both deploy methods.)
-
-Adjust:
-- The `php` binary -- the panel's Cron Jobs page usually has a dropdown to
-  pick the PHP version/path for that account; use PHP 8.2+. If it doesn't,
-  check **PHP Configuration** in the panel for the actual binary path
-  (something like `/opt/alt/php82/usr/bin/php`).
-- The full path before `artisan` -- confirm it matches where the workflow
-  actually uploaded the app bundle (`CLIENT_FTP_PATH/app`).
-
-Every 15 minutes is a reasonable default (the command is a safe no-op when
-there's nothing new to do), or use the panel's "run now" option if it has
-one, right after a deploy.
-
-## 3. Finish installation
-
-Once the cron job has run at least once (creating `.env` with a generated
-app key), visit `https://crm.copperfitting.in/setup` to run the Setup
-Wizard -- enter the database credentials for this subdomain's own MySQL
-database (create one in the hosting panel first, separate from the other
-sites on this account) and create the first admin account.
+If panel/cron access ever does become available, a cron job calling
+`php app/artisan app:deploy-finalize` on a schedule is a cleaner long-term
+alternative to re-visiting the URL by hand after every deploy -- see the
+`app:deploy-finalize` command's own docblock for the exact command shape.
 
 ## Notes
 
 - This account also hosts other live sites, including the main
   `copperfitting.in` WordPress site. The deploy workflow only ever writes
-  under `CLIENT_FTP_PATH` (`public_html/crm.copperfitting.in`) and never
-  deletes remote files, so it can't affect those other sites.
+  under `CLIENT_FTP_PATH` and never deletes remote files, so it can't affect
+  those other sites -- but double-check `CLIENT_FTP_PATH` before ever
+  changing it, since a wrong value could in principle point somewhere it
+  shouldn't.
 - `.env` is never touched by the deploy workflow once it exists -- only
-  `app:deploy-finalize` creates it, and only if it's missing.
+  `app:deploy-finalize` (via cron or `deploy-finalize.php`) creates it, and
+  only if it's missing.

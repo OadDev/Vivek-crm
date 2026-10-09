@@ -41,6 +41,7 @@ jobs:
           cp deploy/app-htaccess dist/app/.htaccess
           cp deploy/extract-bundle.php dist/app/extract-bundle.php
           cp deploy/hostinger-index.php dist/index.php
+          cp deploy/deploy-finalize.php dist/deploy-finalize.php
           cp public/.htaccess dist/.htaccess
           cp public/favicon.ico dist/favicon.ico
           cp public/robots.txt dist/robots.txt
