@@ -139,14 +139,45 @@ class ContactImporter
 
         if (is_numeric($value)) {
             try {
-                return Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value));
+                $date = Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value));
+            } catch (\Throwable) {
+                return null;
+            }
+
+            // A genuine Excel/Sheets date serial lands in a sane range --
+            // anything else numeric that ends up here (a GST/PAN fragment,
+            // a phone number, a misaligned column from a CSV parsing bug)
+            // produces a nonsense date like the year 3269 rather than
+            // failing cleanly, so reject anything implausible instead of
+            // silently saving garbage.
+            return $date->year >= 2000 && $date->year <= (now()->year + 5) ? $date : null;
+        }
+
+        $value = (string) $value;
+
+        // Indian-format sheets write dates as DD/MM/YYYY or DD-MM-YYYY;
+        // PHP's default parsing assumes US-style MM/DD/YYYY for ambiguous
+        // slash dates (day <= 12), silently producing the wrong date
+        // instead of failing -- try day-first explicitly before falling
+        // back to Carbon's general parser for anything else.
+        if (preg_match('#^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$#', $value, $m)) {
+            [$day, $month, $year] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+
+            // checkdate() rejects e.g. day 31 in a 30-day month instead of
+            // letting DateTime silently overflow into the next month.
+            if (! checkdate($month, $day, $year)) {
+                return null;
+            }
+
+            try {
+                return Carbon::createFromFormat('d/m/Y', "{$m[1]}/{$m[2]}/{$m[3]}")->startOfDay();
             } catch (\Throwable) {
                 return null;
             }
         }
 
         try {
-            return Carbon::parse((string) $value);
+            return Carbon::parse($value);
         } catch (\Throwable) {
             return null;
         }

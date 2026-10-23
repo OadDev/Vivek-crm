@@ -91,8 +91,7 @@ class ContactSyncService
             throw new \RuntimeException('Google returned a sign-in page instead of your sheet data. Open the sheet, click Share, and set general access to "Anyone with the link — Viewer", then try again.');
         }
 
-        $lines = array_filter(preg_split('/\r\n|\r|\n/', $body));
-        $rows = array_map('str_getcsv', $lines);
+        $rows = $this->parseCsv($body);
         $headers = array_map('trim', array_shift($rows) ?? []);
 
         $assocRows = [];
@@ -101,6 +100,36 @@ class ContactSyncService
         }
 
         return (new ContactImporter)->import($assocRows, 'google_sheet');
+    }
+
+    /**
+     * Splitting the body into lines before parsing (the previous approach)
+     * breaks any row whose cell contains a real newline -- a multi-line
+     * address, for example. A quoted CSV field is allowed to span multiple
+     * physical lines per the CSV spec, so that has to be parsed as one
+     * stream, not line-by-line, or the embedded newline splits one logical
+     * row into two corrupted fragments and shifts every column after it.
+     *
+     * @return array<int, array<int, string|null>>
+     */
+    protected function parseCsv(string $body): array
+    {
+        $stream = fopen('php://memory', 'r+');
+        fwrite($stream, $body);
+        rewind($stream);
+
+        $rows = [];
+        while (($row = fgetcsv($stream)) !== false) {
+            if ($row === [null]) {
+                continue;
+            }
+
+            $rows[] = $row;
+        }
+
+        fclose($stream);
+
+        return $rows;
     }
 
     protected function toCsvExportUrl(string $url): string
