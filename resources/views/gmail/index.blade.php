@@ -80,9 +80,12 @@
               </form>
               @endif
             @endforeach
-            <a href="{{ route('gmail.star.get', $conv) }}" class="conv-star {{ $conv->is_starred ? 'active' : '' }}">
-              <i class="bi {{ $conv->is_starred ? 'bi-star-fill' : 'bi-star' }}"></i>
-            </a>
+            <form method="POST" action="{{ route('gmail.star', $conv) }}" class="conv-star-form">
+              @csrf @method('PATCH')
+              <button type="submit" class="conv-star {{ $conv->is_starred ? 'active' : '' }}">
+                <i class="bi {{ $conv->is_starred ? 'bi-star-fill' : 'bi-star' }}"></i>
+              </button>
+            </form>
           </div>
         </div>
       @empty

@@ -427,7 +427,8 @@ small,.text-muted-c{color:var(--text-secondary)!important;}
 .conv-subject{font-size:12.8px;color:var(--text-primary);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .conv-preview{font-size:12.2px;color:var(--text-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .conv-item .unread-dot{width:8px;height:8px;border-radius:50%;background:var(--color-primary);position:absolute;left:4px;top:22px;}
-.conv-star{color:var(--text-muted);font-size:15px;cursor:pointer;flex-shrink:0;}
+.conv-star-form{display:flex;}
+.conv-star{color:var(--text-muted);font-size:15px;cursor:pointer;flex-shrink:0;background:none;border:none;padding:0;line-height:1;}
 .conv-star.active{color:#F5A623;}
 .conv-star:hover{color:#F5A623;}
 

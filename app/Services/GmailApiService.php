@@ -6,6 +6,8 @@ use App\Models\Contact;
 use App\Models\EmailConversation;
 use App\Models\EmailMessage;
 use App\Models\GmailAccount;
+use HTMLPurifier;
+use HTMLPurifier_Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -88,6 +90,7 @@ class GmailApiService
         $created = 0;
         $updated = 0;
         $skipped = 0;
+        $failed = 0;
         $pageToken = null;
         $fetched = 0;
         $consecutiveKnown = 0;
@@ -129,7 +132,11 @@ class GmailApiService
                 $full = Http::withToken($token)->get(self::API_BASE.'/messages/'.$ref['id'], ['format' => 'full']);
 
                 if (! $full->successful()) {
-                    $skipped++;
+                    // Tracked separately from $skipped (already-synced) --
+                    // lumping a rate-limit/transient fetch failure in with
+                    // "already up to date" masked genuine sync failures as
+                    // a reported "success" below.
+                    $failed++;
 
                     continue;
                 }
@@ -150,11 +157,13 @@ class GmailApiService
 
         $account->update([
             'last_synced_at' => now(),
-            'last_sync_status' => 'success',
-            'last_sync_message' => "Fetched {$created} new message(s), skipped {$skipped} already-synced.",
+            'last_sync_status' => $failed > 0 ? 'failed' : 'success',
+            'last_sync_message' => $failed > 0
+                ? "Fetched {$created} new message(s), but {$failed} failed to download (Gmail may be rate-limiting -- try syncing again shortly)."
+                : "Fetched {$created} new message(s), skipped {$skipped} already-synced.",
         ]);
 
-        return ['created' => $created, 'updated' => $updated, 'skipped' => $skipped];
+        return ['created' => $created, 'updated' => $updated, 'skipped' => $skipped, 'failed' => $failed];
     }
 
     protected function storeMessage(GmailAccount $account, array $message): void
@@ -222,12 +231,19 @@ class GmailApiService
     protected function extractBody(array $payload): string
     {
         if (isset($payload['body']['data']) && ($payload['body']['size'] ?? 0) > 0) {
-            return $this->base64UrlDecode($payload['body']['data']);
+            $decoded = $this->base64UrlDecode($payload['body']['data']);
+
+            // This single-part branch covers plain-text messages too, not
+            // just HTML ones -- without checking mimeType, a plain-text
+            // email's body was stored completely unescaped.
+            return ($payload['mimeType'] ?? null) === 'text/html'
+                ? $this->sanitizeHtml($decoded)
+                : nl2br(e($decoded));
         }
 
         foreach ($payload['parts'] ?? [] as $part) {
             if ($part['mimeType'] === 'text/html' && isset($part['body']['data'])) {
-                return $this->base64UrlDecode($part['body']['data']);
+                return $this->sanitizeHtml($this->base64UrlDecode($part['body']['data']));
             }
         }
 
@@ -245,6 +261,31 @@ class GmailApiService
         }
 
         return '';
+    }
+
+    /**
+     * The inbox view renders stored message bodies with {!! !!} (unescaped)
+     * to preserve genuine HTML formatting -- without stripping dangerous
+     * markup first, a received email containing e.g. <script> or an
+     * onerror= handler would execute in the browser of any CRM user who
+     * opens that conversation (stored XSS, no attacker CRM access needed).
+     */
+    protected function sanitizeHtml(string $html): string
+    {
+        static $purifier = null;
+
+        if (! $purifier) {
+            $config = HTMLPurifier_Config::createDefault();
+            $config->set('HTML.Allowed', 'p,br,b,strong,i,em,u,ul,ol,li,a[href],span,div,blockquote,table,thead,tbody,tr,td,th,img[src|alt|width|height],h1,h2,h3,h4,hr');
+            $config->set('HTML.TargetBlank', true);
+            // This host has no reliable writable-directory guarantee outside
+            // Laravel's own storage/ paths, so skip HTMLPurifier's own
+            // filesystem cache rather than risk it failing to write silently.
+            $config->set('Cache.DefinitionImpl', null);
+            $purifier = new HTMLPurifier($config);
+        }
+
+        return $purifier->purify($html);
     }
 
     protected function base64UrlDecode(string $data): string

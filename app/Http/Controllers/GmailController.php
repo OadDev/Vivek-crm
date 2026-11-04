@@ -72,7 +72,15 @@ class GmailController extends Controller
 
         $selected = null;
         if ($request->filled('conversation')) {
-            $selected = EmailConversation::with('messages')->find($request->input('conversation'));
+            // Scoped to this user's own account (or unowned legacy rows),
+            // same as the main listing query above -- otherwise anyone
+            // could read any other user's conversation by just passing a
+            // different ?conversation= id.
+            $selected = EmailConversation::with('messages')
+                ->where(function ($q) use ($myAccountId) {
+                    $q->where('gmail_account_id', $myAccountId)->orWhereNull('gmail_account_id');
+                })
+                ->find($request->input('conversation'));
 
             if ($selected && ! $selected->is_read) {
                 $selected->update(['is_read' => true]);
@@ -86,6 +94,8 @@ class GmailController extends Controller
 
     public function toggleStar(EmailConversation $conversation)
     {
+        $this->authorizeConversation($conversation);
+
         $conversation->update(['is_starred' => ! $conversation->is_starred]);
 
         return redirect()->back();
@@ -93,6 +103,8 @@ class GmailController extends Controller
 
     public function moveFolder(Request $request, EmailConversation $conversation)
     {
+        $this->authorizeConversation($conversation);
+
         $request->validate(['folder' => ['required', 'in:inbox,sent,draft,archive,trash']]);
         $conversation->update(['folder' => $request->input('folder')]);
 
@@ -101,6 +113,8 @@ class GmailController extends Controller
 
     public function reply(Request $request, EmailConversation $conversation, GmailApiService $gmail)
     {
+        $this->authorizeConversation($conversation);
+
         $data = $request->validate(['body' => ['required', 'string']]);
         $bodyHtml = nl2br(e($data['body']));
 
@@ -138,7 +152,7 @@ class GmailController extends Controller
             Contact::where('id', $conversation->contact_id)->update(['last_contacted_at' => now(), 'status' => 'active']);
         }
 
-        Activity::log("Replied to <b>{$conversation->sender_name}</b> — {$conversation->subject}", 'bi-reply-fill', 'primary', $conversation);
+        Activity::log("Replied to <b>".e($conversation->sender_name)."</b> — ".e($conversation->subject), 'bi-reply-fill', 'primary', $conversation);
 
         $status = $sentViaGmail
             ? 'success'
@@ -156,6 +170,8 @@ class GmailController extends Controller
 
     public function createContact(Request $request, EmailConversation $conversation)
     {
+        $this->authorizeConversation($conversation);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
@@ -170,9 +186,27 @@ class GmailController extends Controller
 
         EmailConversation::where('sender_email', $data['email'])->update(['contact_id' => $contact->id]);
 
-        Activity::log("Contact <b>{$contact->name}</b> created from email conversation", 'bi-person-plus-fill', 'success', $contact);
+        Activity::log("Contact <b>".e($contact->name)."</b> created from email conversation", 'bi-person-plus-fill', 'success', $contact);
 
         return redirect()->route('gmail.index', ['folder' => $conversation->folder, 'conversation' => $conversation->id])
             ->with('success', 'Contact created and linked to this conversation.');
+    }
+
+    /**
+     * Any logged-in user could otherwise read, star, move, reply through
+     * (sending real outbound email from someone else's connected Gmail
+     * account), or link a contact to any conversation just by guessing an
+     * id -- these routes had no ownership check at all. A conversation with
+     * no gmail_account_id (pre-dates per-user Gmail) is treated as shared.
+     */
+    protected function authorizeConversation(EmailConversation $conversation): void
+    {
+        if ($conversation->gmail_account_id === null) {
+            return;
+        }
+
+        $myAccountId = GmailAccount::forUser(auth()->user())->id;
+
+        abort_unless($conversation->gmail_account_id === $myAccountId, 403);
     }
 }

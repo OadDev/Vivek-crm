@@ -124,6 +124,13 @@ class GmailAuthController extends Controller
         try {
             $result = $service->syncInbox($account);
 
+            if (($result['failed'] ?? 0) > 0) {
+                return redirect()->back()->with(
+                    'error',
+                    "Gmail sync partially failed — {$result['created']} new message(s) fetched, but {$result['failed']} failed to download (Gmail may be rate-limiting). Try syncing again shortly."
+                );
+            }
+
             return redirect()->back()->with(
                 'success',
                 "Gmail sync complete — {$result['created']} new message(s), {$result['skipped']} already up to date."
