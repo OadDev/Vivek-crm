@@ -1,0 +1,57 @@
+name: Discover crm.copperfitting SSH layout (read-only)
+
+# One-off, manual-only diagnostic: connects over SSH and lists what's
+# actually on the account, so the real deploy workflow's paths can be set
+# correctly the first time instead of guessed (the FTP setup for this same
+# account took several wrong guesses before landing on the right path --
+# this avoids repeating that over SSH). Does NOT upload, download, delete,
+# or modify anything -- read-only `pwd`/`ls`/`whoami` commands only.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Explore account layout
+        env:
+          SSH_HOST: ${{ secrets.CLIENT_SSH_HOST }}
+          SSH_PORT: ${{ secrets.CLIENT_SSH_PORT }}
+          SSH_USER: ${{ secrets.CLIENT_SSH_USERNAME }}
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          SSH="sshpass -p $SSH_PASS ssh -p $SSH_PORT -o StrictHostKeyChecking=no -o ConnectTimeout=20 $SSH_USER@$SSH_HOST"
+
+          echo "=== whoami / pwd ==="
+          $SSH 'whoami; pwd'
+
+          echo ""
+          echo "=== PHP binaries available ==="
+          $SSH 'for c in php php8.4 php8.3 php8.2 php82 php8_2; do p=$(command -v "$c" 2>/dev/null); [ -n "$p" ] && echo "$c -> $p ($($p -v 2>/dev/null | head -1))"; done; ls -d /opt/alt/php* /opt/cpanel/ea-php* 2>/dev/null'
+
+          echo ""
+          echo "=== home directory contents ==="
+          $SSH 'ls -la ~'
+
+          echo ""
+          echo "=== domains/ (if it exists -- common on this kind of hosting) ==="
+          $SSH 'ls -la ~/domains 2>/dev/null || echo "(no ~/domains directory)"'
+
+          echo ""
+          echo "=== one level into each domains/* folder, if any ==="
+          $SSH 'for d in ~/domains/*/; do echo "--- $d ---"; ls -la "$d" 2>/dev/null; done 2>/dev/null || true'
+
+          echo ""
+          echo "=== public_html/ at home root (if it exists) ==="
+          $SSH 'ls -la ~/public_html 2>/dev/null || echo "(no ~/public_html at home root)"'
+
+          echo ""
+          echo "=== search for any directory literally named like the copperfitting domains ==="
+          $SSH 'find ~ -maxdepth 4 -iname "*copperfitting*" -type d 2>/dev/null'
+
+          echo ""
+          echo "=== disk usage / quota sanity check ==="
+          $SSH 'df -h ~ 2>/dev/null || true'
