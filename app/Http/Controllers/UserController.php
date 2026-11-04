@@ -24,7 +24,7 @@ class UserController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'role' => ['required', 'in:admin,user'],
             'sales_man' => ['nullable', 'string', 'max:255'],
-            'password' => ['nullable', 'string', 'min:8'],
+            'password' => ['nullable', 'string', 'min:10'],
         ]);
 
         $password = $data['password'] ?? Str::password(14);
@@ -37,7 +37,7 @@ class UserController extends Controller
             'password' => Hash::make($password),
         ]);
 
-        Activity::log("Team account <b>{$user->name}</b> created", 'bi-person-plus-fill', 'success');
+        Activity::log("Team account <b>".e($user->name)."</b> created", 'bi-person-plus-fill', 'success');
 
         return redirect()->route('users.index')->with(
             'success',
@@ -60,7 +60,7 @@ class UserController extends Controller
 
         $user->update($data);
 
-        Activity::log("Team account <b>{$user->name}</b> updated", 'bi-pencil-fill', 'primary');
+        Activity::log("Team account <b>".e($user->name)."</b> updated", 'bi-pencil-fill', 'primary');
 
         return redirect()->route('users.index')->with('success', 'Account updated.');
     }
@@ -70,7 +70,7 @@ class UserController extends Controller
         $password = Str::password(14);
         $user->update(['password' => Hash::make($password)]);
 
-        Activity::log("Password reset for <b>{$user->name}</b>", 'bi-key-fill', 'warning');
+        Activity::log("Password reset for <b>".e($user->name)."</b>", 'bi-key-fill', 'warning');
 
         return redirect()->route('users.index')->with('success', "New temporary password for {$user->email}: {$password} (share this securely — it will not be shown again).");
     }
@@ -84,7 +84,7 @@ class UserController extends Controller
         $name = $user->name;
         $user->delete();
 
-        Activity::log("Team account <b>{$name}</b> removed", 'bi-trash-fill', 'danger');
+        Activity::log("Team account <b>".e($name)."</b> removed", 'bi-trash-fill', 'danger');
 
         return redirect()->route('users.index')->with('success', 'Account removed.');
     }

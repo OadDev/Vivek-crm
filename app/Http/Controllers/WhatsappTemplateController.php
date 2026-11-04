@@ -23,7 +23,7 @@ class WhatsappTemplateController extends Controller
         $template = WhatsappTemplate::create($data + ['user_id' => $ownerId]);
         WhatsappTemplate::forgetCache($ownerId);
 
-        Activity::log("WhatsApp template <b>{$template->name}</b> created", 'bi-whatsapp', 'success', $template);
+        Activity::log("WhatsApp template <b>".e($template->name)."</b> created", 'bi-whatsapp', 'success', $template);
 
         return redirect()->route('settings.index')->with('success', 'Template created successfully.');
     }
@@ -36,7 +36,7 @@ class WhatsappTemplateController extends Controller
         $whatsappTemplate->update($data);
         WhatsappTemplate::forgetCache($whatsappTemplate->user_id);
 
-        Activity::log("WhatsApp template <b>{$whatsappTemplate->name}</b> updated", 'bi-whatsapp', 'primary', $whatsappTemplate);
+        Activity::log("WhatsApp template <b>".e($whatsappTemplate->name)."</b> updated", 'bi-whatsapp', 'primary', $whatsappTemplate);
 
         return redirect()->route('settings.index')->with('success', 'Template updated successfully.');
     }
@@ -50,7 +50,7 @@ class WhatsappTemplateController extends Controller
         $whatsappTemplate->delete();
         WhatsappTemplate::forgetCache($userId);
 
-        Activity::log("WhatsApp template <b>{$name}</b> deleted", 'bi-trash-fill', 'danger');
+        Activity::log("WhatsApp template <b>".e($name)."</b> deleted", 'bi-trash-fill', 'danger');
 
         return redirect()->route('settings.index')->with('success', 'Template deleted.');
     }
