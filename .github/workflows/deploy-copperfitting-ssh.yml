@@ -1,0 +1,161 @@
+name: Deploy to crm.copperfitting.in (SSH)
+
+# Replaces the earlier FTP-only deploy (deploy-copperfitting.yml) and the
+# browser-triggered deploy-finalize.php workaround -- both of those existed
+# specifically because this hosting account had no SSH access at the time.
+# That's since changed: this now deploys the exact same proven way as the
+# main Hostinger CRM (deploy.yml) -- rsync over SSH, then direct SSH
+# commands for migrate/cache -- instead of FTP + a manually-visited URL.
+#
+# Manual trigger only, on purpose, for the first several runs: this
+# account hosts several other live sites (busbar.in, copperfitting.in
+# itself on WordPress, kanchansales.com, manibhadrafittings.com,
+# medicalpipelines.com, z-lok.com) and nothing here should fire
+# automatically until the path below is proven correct end-to-end.
+# Switch to `push: branches: [main]` once verified, to match deploy.yml.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      # Confirmed via a read-only SSH discovery pass: crm.copperfitting.in
+      # is a subdomain pointed at this folder, nested inside the parent
+      # copperfitting.in domain's own public_html -- not a separate
+      # top-level domains/ entry. This already holds the app/+index.php
+      # split layout from the earlier FTP bundle (deploy-finalize.php,
+      # app/, index.php, .htaccess all already present here).
+      SSH_HOST: "82.25.120.6"
+      SSH_PORT: "65002"
+      SSH_USER: "u829428207"
+      DEPLOY_PATH: "domains/copperfitting.in/public_html/orbitcrm"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, zip, bcmath
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
+
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      # Fails fast if the connection itself is the problem, same as the
+      # original FTP workflow's own connection-test step.
+      - name: Test SSH connection
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          timeout 30 sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no -o ConnectTimeout=20 \
+            "$SSH_USER@$SSH_HOST" 'echo "Connected as $(whoami) -- DEPLOY_PATH check:"; ls -la "'"$DEPLOY_PATH"'" | head -5'
+
+      # DEPLOY_PATH *is* the subdomain's public_html folder -- everything
+      # except public/ goes into DEPLOY_PATH/app/, matching the layout
+      # already on the server from the earlier FTP bundle upload.
+      - name: Deploy app bundle (vendor, app, bootstrap, etc.) to DEPLOY_PATH/app
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" rsync -rltz --delete \
+            -e "ssh -p $SSH_PORT -o StrictHostKeyChecking=no" \
+            --exclude='/.git/' --exclude='/.github/' --exclude='/tests/' \
+            --exclude='/.env' --exclude='/public/' --exclude='/deploy/' \
+            --exclude='/storage/app/' --exclude='/storage/framework/cache/' \
+            --exclude='/storage/framework/sessions/' --exclude='/storage/framework/views/' \
+            --exclude='/storage/logs/' --exclude='/node_modules/' \
+            ./ "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/app/"
+
+      # Copies public/ contents (assets, .htaccess, favicon, robots.txt) to
+      # the subdomain's webroot itself. index.php is excluded here and
+      # deployed separately below (a modified version pointing into app/).
+      - name: Deploy public assets to DEPLOY_PATH
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" rsync -rltz \
+            -e "ssh -p $SSH_PORT -o StrictHostKeyChecking=no" \
+            --exclude='index.php' --exclude='/app/' \
+            ./public/ "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/"
+
+      - name: Deploy front controller (index.php)
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" rsync -rltz \
+            -e "ssh -p $SSH_PORT -o StrictHostKeyChecking=no" \
+            ./deploy/hostinger-index.php "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/index.php"
+
+      # app/ holds .env, vendor/, etc. and sits under the same webroot as
+      # index.php on this hosting plan -- without this,
+      # https://crm.copperfitting.in/app/.env would be a real, publicly
+      # downloadable file.
+      - name: Block direct HTTP access to DEPLOY_PATH/app
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" rsync -rltz \
+            -e "ssh -p $SSH_PORT -o StrictHostKeyChecking=no" \
+            ./deploy/app-htaccess "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/app/.htaccess"
+
+      # Idempotent -- safe on every deploy. Creates the directories Laravel
+      # needs to write into (excluded from rsync so real data in them
+      # survives deploys).
+      - name: Ensure storage directories exist
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "cd $DEPLOY_PATH/app && \
+             mkdir -p storage/app/private storage/app/public \
+                      storage/framework/cache/data storage/framework/sessions storage/framework/views \
+                      storage/logs && \
+             chmod -R 775 storage bootstrap/cache"
+
+      # .env is deliberately excluded from rsync (so the real, already-
+      # populated one from the earlier FTP/deploy-finalize.php setup is
+      # never clobbered by a deploy). Only bootstraps one if it's somehow
+      # missing; otherwise leaves it alone entirely.
+      - name: Bootstrap .env if missing
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "cd $DEPLOY_PATH/app && \
+             PHP_BIN=\$(command -v php) && \
+             echo \"Using \$PHP_BIN (\$(\$PHP_BIN -v | head -1))\" && \
+             if [ ! -f .env ]; then \
+               echo 'No .env found -- bootstrapping one from .env.example' && \
+               cp .env.example .env && \
+               \$PHP_BIN artisan key:generate --force; \
+             else \
+               echo '.env already exists -- leaving it alone'; \
+             fi"
+
+      # Skips migrate/cache until storage/app/installed.lock exists -- same
+      # safeguard as the main Hostinger deploy. This site has already
+      # completed /setup, so this should run for real on every deploy.
+      - name: Run post-deploy commands
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "cd $DEPLOY_PATH/app && \
+             PHP_BIN=\$(command -v php) && \
+             echo \"Using \$PHP_BIN (\$(\$PHP_BIN -v | head -1))\" && \
+             if [ -f storage/app/installed.lock ]; then \
+               \$PHP_BIN artisan migrate --force && \
+               \$PHP_BIN artisan config:cache && \
+               \$PHP_BIN artisan route:cache && \
+               \$PHP_BIN artisan view:cache && \
+               \$PHP_BIN artisan event:cache && \
+               \$PHP_BIN artisan queue:restart; \
+             else \
+               echo 'App not installed yet -- visit /setup to finish installation. Skipping migrate/cache for now.'; \
+             fi"
