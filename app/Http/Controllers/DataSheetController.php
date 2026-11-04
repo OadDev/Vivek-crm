@@ -91,7 +91,12 @@ class DataSheetController extends Controller
         $query = $dataSheet->rows();
 
         if ($request->filled('search')) {
-            $query->where('search_text', 'like', '%'.strtolower($request->string('search')).'%');
+            // Escape LIKE wildcards in the user's own search text so a
+            // literal "_"/"%" (e.g. a part number like "AB_12") is matched
+            // as itself instead of acting as a single-character/any-length
+            // wildcard and pulling in unrelated rows.
+            $term = str_replace(['%', '_'], ['\%', '\_'], strtolower($request->string('search')));
+            $query->where('search_text', 'like', '%'.$term.'%');
         }
 
         $sort = $request->input('sort');

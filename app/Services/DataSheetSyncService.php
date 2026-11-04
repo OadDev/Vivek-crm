@@ -31,6 +31,12 @@ class DataSheetSyncService
                 throw new RuntimeException('No data found -- the first row must contain column headers.');
             }
 
+            // Two columns sharing the same header text would otherwise
+            // collapse into one in array_combine() below, silently
+            // discarding whichever column's value lost (e.g. a sheet with
+            // two "Phone" columns, the second meant to be "Alt Phone").
+            $headers = $this->deduplicateHeaders($headers);
+
             DB::transaction(function () use ($sheet, $headers, $rows) {
                 $sheet->rows()->delete();
 
@@ -72,6 +78,19 @@ class DataSheetSyncService
         }
     }
 
+    protected function deduplicateHeaders(array $headers): array
+    {
+        $seen = [];
+        foreach ($headers as $i => $header) {
+            $count = $seen[$header] = ($seen[$header] ?? 0) + 1;
+            if ($count > 1) {
+                $headers[$i] = "{$header} ({$count})";
+            }
+        }
+
+        return $headers;
+    }
+
     protected function fromExcel(DataSheet $sheet): array
     {
         if (! $sheet->excel_file_path || ! Storage::disk('local')->exists($sheet->excel_file_path)) {
@@ -110,11 +129,39 @@ class DataSheetSyncService
             throw new RuntimeException('Google returned a sign-in page instead of your sheet data. Open the sheet, click Share, and set general access to "Anyone with the link — Viewer", then try again.');
         }
 
-        $lines = array_filter(preg_split('/\r\n|\r|\n/', $body));
-        $rows = array_map('str_getcsv', $lines);
+        $rows = $this->parseCsv($body);
         $headers = array_map('trim', array_shift($rows) ?? []);
 
         return [$headers, $rows];
+    }
+
+    /**
+     * Splitting the body into lines before parsing breaks any row whose
+     * cell contains a real newline (a multi-line address, for example) --
+     * a quoted CSV field is allowed to span multiple physical lines per
+     * the CSV spec, so this has to be parsed as one stream, not line-by-
+     * line (see the identical fix in ContactSyncService::parseCsv()).
+     *
+     * @return array<int, array<int, string|null>>
+     */
+    protected function parseCsv(string $body): array
+    {
+        $stream = fopen('php://memory', 'r+');
+        fwrite($stream, $body);
+        rewind($stream);
+
+        $rows = [];
+        while (($row = fgetcsv($stream)) !== false) {
+            if ($row === [null]) {
+                continue;
+            }
+
+            $rows[] = $row;
+        }
+
+        fclose($stream);
+
+        return $rows;
     }
 
     protected function toCsvExportUrl(string $url): string

@@ -96,7 +96,11 @@ class ContactSyncService
 
         $assocRows = [];
         foreach ($rows as $row) {
-            $assocRows[] = array_combine($headers, array_pad($row, count($headers), null));
+            // array_pad() only pads a short row -- a row with MORE fields
+            // than $headers (e.g. an unescaped comma inside an address
+            // cell) would make array_combine() throw a ValueError, failing
+            // the entire sync run instead of just that one row.
+            $assocRows[] = array_combine($headers, array_pad(array_slice($row, 0, count($headers)), count($headers), null));
         }
 
         return (new ContactImporter)->import($assocRows, 'google_sheet');
