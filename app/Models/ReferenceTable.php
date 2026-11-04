@@ -49,9 +49,17 @@ class ReferenceTable extends Model
             return [[], []];
         }
 
-        $splitLine = fn ($line) => str_contains($line, "\t") ? explode("\t", $line) : str_getcsv($line);
+        // Decide the delimiter once, from the header line, instead of
+        // per-line -- otherwise a single data row with no tab character
+        // (e.g. only one populated cell) gets comma-split instead, and a
+        // value containing a comma (like "1,250") silently splits into two
+        // misaligned cells for just that one row.
+        $headerLine = array_shift($lines);
+        $splitLine = str_contains($headerLine, "\t")
+            ? fn ($line) => explode("\t", $line)
+            : fn ($line) => str_getcsv($line);
 
-        $headers = array_map('trim', $splitLine(array_shift($lines)));
+        $headers = array_map('trim', $splitLine($headerLine));
         $rows = array_map(fn ($line) => array_map('trim', $splitLine($line)), $lines);
 
         return [$headers, $rows];

@@ -38,14 +38,30 @@ class ProductsImport implements ToCollection, WithHeadingRow
             $mapped = [];
             foreach (self::ALIASES as $field => $aliases) {
                 foreach ($aliases as $alias) {
-                    if (! empty($normalized[$alias])) {
+                    if (isset($normalized[$alias]) && $normalized[$alias] !== '') {
                         $mapped[$field] = $normalized[$alias];
                         break;
                     }
                 }
             }
 
-            if (empty($mapped['code']) || empty($mapped['name'])) {
+            // empty() treats the string "0" as empty too -- a product whose
+            // code or name is literally "0" would otherwise be wrongly
+            // skipped even though the sheet has a real value for it.
+            if (($mapped['code'] ?? '') === '' || ($mapped['name'] ?? '') === '') {
+                $skipped++;
+
+                continue;
+            }
+
+            // The rate column is decimal(12,2) under strict SQL mode -- a
+            // sheet cell like "N/A", "TBD", or "₹1,250.00" passed straight
+            // through would throw an uncaught QueryException and abort the
+            // whole import (rows already processed stay committed, with no
+            // accurate created/updated/skipped counts reported back).
+            $rateRaw = trim(str_replace([',', '₹', '$', ' '], '', (string) ($mapped['rate'] ?? '0')));
+
+            if ($rateRaw !== '' && ! is_numeric($rateRaw)) {
                 $skipped++;
 
                 continue;
@@ -58,7 +74,7 @@ class ProductsImport implements ToCollection, WithHeadingRow
                 'size' => $mapped['size'] ?? null,
                 'weight' => $mapped['weight'] ?? null,
                 'unit' => $mapped['unit'] ?? 'PCS',
-                'rate' => $mapped['rate'] ?? 0,
+                'rate' => $rateRaw !== '' ? (float) $rateRaw : 0,
                 'specification' => $mapped['specification'] ?? null,
             ]);
 
