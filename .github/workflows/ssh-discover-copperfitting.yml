@@ -18,9 +18,14 @@ jobs:
 
       - name: Explore account layout
         env:
-          SSH_HOST: ${{ secrets.CLIENT_SSH_HOST }}
-          SSH_PORT: ${{ secrets.CLIENT_SSH_PORT }}
-          SSH_USER: ${{ secrets.CLIENT_SSH_USERNAME }}
+          # Host/port/username aren't secrets on their own -- only the
+          # password is -- and this repo is private, so these are hardcoded
+          # rather than requiring three more repo secrets for non-sensitive
+          # values. Update these two lines if the client's hosting details
+          # ever change.
+          SSH_HOST: "82.25.120.6"
+          SSH_PORT: "65002"
+          SSH_USER: "u829428207"
           SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
         run: |
           SSH="sshpass -p $SSH_PASS ssh -p $SSH_PORT -o StrictHostKeyChecking=no -o ConnectTimeout=20 $SSH_USER@$SSH_HOST"
