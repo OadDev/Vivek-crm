@@ -159,13 +159,15 @@ class ContactController extends Controller
             'last_contacted_at' => $data['last_contacted_at'] ?? now(),
         ]);
 
-        Activity::log("New contact <b>{$contact->name}</b> added manually", 'bi-person-plus-fill', 'success', $contact);
+        Activity::log("New contact <b>".e($contact->name)."</b> added manually", 'bi-person-plus-fill', 'success', $contact);
 
         return redirect()->route('contacts.index')->with('success', 'Contact added successfully.');
     }
 
     public function show(Contact $contact)
     {
+        $this->authorizeContactAccess($contact);
+
         $contact->load(['emailConversations.messages', 'whatsappMessages.template']);
         $waTemplate = $this->resolveWhatsappTemplate();
 
@@ -174,27 +176,33 @@ class ContactController extends Controller
 
     public function update(Request $request, Contact $contact)
     {
+        $this->authorizeContactAccess($contact);
+
         $data = $this->validated($request, $contact);
         $data['name'] = $data['name'] ?: $data['company'];
         $contact->update($data);
 
-        Activity::log("Contact <b>{$contact->name}</b> updated", 'bi-pencil-fill', 'primary', $contact);
+        Activity::log("Contact <b>".e($contact->name)."</b> updated", 'bi-pencil-fill', 'primary', $contact);
 
         return redirect()->back()->with('success', 'Contact updated successfully.');
     }
 
     public function destroy(Contact $contact)
     {
+        $this->authorizeContactAccess($contact);
+
         $name = $contact->name;
         $contact->delete();
 
-        Activity::log("Contact <b>{$name}</b> deleted", 'bi-trash-fill', 'danger');
+        Activity::log("Contact <b>".e($name)."</b> deleted", 'bi-trash-fill', 'danger');
 
         return redirect()->route('contacts.index')->with('success', 'Contact deleted.');
     }
 
     public function toggleStar(Contact $contact)
     {
+        $this->authorizeContactAccess($contact);
+
         $contact->update(['is_starred' => ! $contact->is_starred]);
 
         return redirect()->back();
@@ -202,38 +210,64 @@ class ContactController extends Controller
 
     public function archive(Contact $contact)
     {
+        $this->authorizeContactAccess($contact);
+
         $contact->update(['is_archived' => true, 'archived_at' => now()]);
 
-        Activity::log("Lead <b>{$contact->name}</b> archived", 'bi-archive-fill', 'warning', $contact);
+        Activity::log("Lead <b>".e($contact->name)."</b> archived", 'bi-archive-fill', 'warning', $contact);
 
         return redirect()->back()->with('success', 'Lead archived and removed from the pipeline.');
     }
 
     public function unarchive(Contact $contact)
     {
+        $this->authorizeContactAccess($contact);
+
         $contact->update(['is_archived' => false, 'archived_at' => null]);
 
-        Activity::log("Lead <b>{$contact->name}</b> restored from archive", 'bi-archive', 'info', $contact);
+        Activity::log("Lead <b>".e($contact->name)."</b> restored from archive", 'bi-archive', 'info', $contact);
 
         return redirect()->back()->with('success', 'Lead restored to the pipeline.');
     }
 
     public function markWon(Contact $contact)
     {
+        $this->authorizeContactAccess($contact);
+
         $contact->update(['is_won' => true, 'won_at' => now()]);
 
-        Activity::log("Quotation <b>{$contact->quote_no}</b> for <b>{$contact->name}</b> marked Won", 'bi-trophy-fill', 'success', $contact);
+        Activity::log("Quotation <b>".e($contact->quote_no)."</b> for <b>".e($contact->name)."</b> marked Won", 'bi-trophy-fill', 'success', $contact);
 
         return redirect()->back()->with('success', 'Marked as Won.');
     }
 
     public function unmarkWon(Contact $contact)
     {
+        $this->authorizeContactAccess($contact);
+
         $contact->update(['is_won' => false, 'won_at' => null]);
 
-        Activity::log("Quotation <b>{$contact->quote_no}</b> for <b>{$contact->name}</b> reverted from Won", 'bi-trophy', 'info', $contact);
+        Activity::log("Quotation <b>".e($contact->quote_no)."</b> for <b>".e($contact->name)."</b> reverted from Won", 'bi-trophy', 'info', $contact);
 
         return redirect()->back()->with('success', 'Reverted from Won.');
+    }
+
+    /**
+     * Matches the scoping already applied to the index() listing: a
+     * non-admin user assigned to a specific salesman may only act on that
+     * salesman's own leads. Without this, any logged-in sales rep could
+     * view, edit, delete, or WhatsApp any other rep's contact just by
+     * requesting a different {contact} id.
+     */
+    protected function authorizeContactAccess(Contact $contact): void
+    {
+        $user = auth()->user();
+
+        if ($user->isAdmin() || ! $user->sales_man) {
+            return;
+        }
+
+        abort_unless($contact->sales_man === $user->sales_man, 403);
     }
 
     /**
@@ -260,6 +294,8 @@ class ContactController extends Controller
      */
     public function whatsapp(Contact $contact)
     {
+        $this->authorizeContactAccess($contact);
+
         if (! $contact->whatsapp) {
             return response()->noContent();
         }
@@ -281,13 +317,15 @@ class ContactController extends Controller
 
         $contact->update(['last_contacted_at' => now()]);
 
-        Activity::log("WhatsApp opened for <b>{$contact->name}</b>", 'bi-whatsapp', 'success', $contact);
+        Activity::log("WhatsApp opened for <b>".e($contact->name)."</b>", 'bi-whatsapp', 'success', $contact);
 
         return response()->noContent();
     }
 
     public function remind(Request $request, Contact $contact)
     {
+        $this->authorizeContactAccess($contact);
+
         $days = (int) $request->input('days');
         abort_unless(in_array($days, [2, 7], true), 422);
 
@@ -297,7 +335,7 @@ class ContactController extends Controller
             'remind_at' => now()->addDays($days),
         ]);
 
-        Activity::log("Reminder set for <b>{$contact->name}</b> in {$days} day(s)", 'bi-alarm-fill', 'warning', $contact);
+        Activity::log("Reminder set for <b>".e($contact->name)."</b> in {$days} day(s)", 'bi-alarm-fill', 'warning', $contact);
 
         return redirect()->back()->with('success', "You'll be reminded about {$contact->name} in {$days} day(s).");
     }
