@@ -58,5 +58,17 @@ jobs:
           $SSH 'find ~ -maxdepth 4 -iname "*copperfitting*" -type d 2>/dev/null'
 
           echo ""
+          echo "=== search for any directory named exactly 'crm' or containing 'crm' anywhere under home ==="
+          $SSH 'find ~ -maxdepth 6 -iname "*crm*" -type d 2>/dev/null'
+
+          echo ""
+          echo "=== full recursive listing of domains/copperfitting.in/public_html (crm is likely a subfolder here) ==="
+          $SSH 'find ~/domains/copperfitting.in/public_html -maxdepth 2 2>/dev/null'
+
+          echo ""
+          echo "=== Laravel fingerprint: look for artisan/composer.json anywhere under home (confirms which folder actually holds THIS app, if any was already uploaded) ==="
+          $SSH 'find ~/domains -maxdepth 4 \( -iname "artisan" -o -iname "composer.json" \) 2>/dev/null'
+
+          echo ""
           echo "=== disk usage / quota sanity check ==="
           $SSH 'df -h ~ 2>/dev/null || true'
