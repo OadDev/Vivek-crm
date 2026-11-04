@@ -101,6 +101,7 @@
                   </table>
                 </div>
 
+                @if (auth()->user()->isAdmin())
                 <div class="d-flex gap-2 mb-2">
                   <button type="button" class="btn btn-outline-c btn-sm js-toggle-edit-rt" data-target="rtEdit{{ $rt->id }}"><i class="bi bi-clipboard-check me-1"></i>Replace via Paste</button>
                   <form method="POST" action="{{ route('reference-tables.destroy', $rt) }}" data-confirm="Remove table &quot;{{ $rt->title }}&quot;?">
@@ -121,6 +122,7 @@
                     <div class="col-12"><button type="submit" class="btn btn-primary-c btn-sm">Save Table</button></div>
                   </div>
                 </form>
+                @endif
               </div>
             </div>
           </div>
@@ -129,6 +131,7 @@
           @endforelse
         </div>
 
+        @if (auth()->user()->isAdmin())
         <hr>
         <h6 class="fw-700">Add New Reference Table</h6>
         <form method="POST" action="{{ route('reference-tables.store') }}" class="row g-2">
@@ -141,6 +144,7 @@
           </div>
           <div class="col-12"><button type="submit" class="btn btn-primary-c btn-sm"><i class="bi bi-plus-lg me-1"></i>Add Table</button></div>
         </form>
+        @endif
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-light-c" data-bs-dismiss="modal">Close</button>

@@ -10,6 +10,7 @@
     <div class="page-subtitle">Manage your product catalog and specifications.</div>
   </div>
   <div class="d-flex gap-2 flex-wrap">
+    @if (auth()->user()->isAdmin())
     <form method="POST" action="{{ route('products.import') }}" enctype="multipart/form-data" id="productImportForm" class="d-none">
       @csrf
       <input type="file" name="file" id="productImportFile" accept=".xlsx,.xls,.csv">
@@ -17,6 +18,7 @@
     <button type="button" class="btn btn-outline-c btn-sm" onclick="document.getElementById('productImportFile').click()"><i class="bi bi-file-earmark-arrow-up me-1"></i>Import Excel</button>
     <a href="{{ route('products.export') }}" class="btn btn-outline-c btn-sm"><i class="bi bi-file-earmark-arrow-down me-1"></i>Export Excel</a>
     <button class="btn btn-primary-c btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddProduct"><i class="bi bi-plus-lg me-1"></i>Add Product</button>
+    @endif
   </div>
 </div>
 
@@ -29,7 +31,7 @@
           <input type="text" name="search" class="form-control form-control-sm" placeholder="Search products..." value="{{ request('search') }}">
         </div>
         <div class="filter-chip-group">
-          <a href="{{ route('products.index') }}" class="filter-chip-btn {{ !request('unit') || request('unit') === 'all' ? 'active' : '' }}">All Units</a>
+          <a href="{{ route('products.index', request()->except(['page', 'unit'])) }}" class="filter-chip-btn {{ !request('unit') || request('unit') === 'all' ? 'active' : '' }}">All Units</a>
           @foreach (['PCS','KG','BOX','SET'] as $u)
             <a href="{{ route('products.index', array_merge(request()->except('page'), ['unit' => $u])) }}" class="filter-chip-btn {{ request('unit') === $u ? 'active' : '' }}">{{ $u }}</a>
           @endforeach
@@ -61,6 +63,7 @@
             <td class="fw-600" data-label="Rate">₹{{ number_format($p->rate, 2) }}</td>
             <td class="small text-muted-c" data-label="Specification">{{ $p->specification ?: '—' }}</td>
             <td class="td-plain">
+              @if (auth()->user()->isAdmin())
               <div class="d-flex gap-1 justify-content-end">
                 <button type="button" class="btn-icon-sq js-edit-product"
                   data-id="{{ $p->id }}" data-code="{{ $p->code }}" data-name="{{ $p->name }}" data-size="{{ $p->size }}"
@@ -71,6 +74,7 @@
                   <button type="submit" class="btn-icon-sq danger" title="Delete" data-bs-toggle="tooltip"><i class="bi bi-trash"></i></button>
                 </form>
               </div>
+              @endif
             </td>
           </tr>
           @empty

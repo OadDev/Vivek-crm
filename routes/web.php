@@ -35,7 +35,7 @@ Route::prefix('setup')->name('setup.')->group(function () {
 // ---------------------------------------------------------------------
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
-    Route::post('/login', [LoginController::class, 'store'])->name('login.store');
+    Route::post('/login', [LoginController::class, 'store'])->name('login.store')->middleware('throttle:5,1');
 });
 Route::post('/logout', [LoginController::class, 'destroy'])->name('logout')->middleware('auth');
 
@@ -53,7 +53,6 @@ Route::middleware('auth')->group(function () {
     Route::prefix('gmail')->name('gmail.')->group(function () {
         Route::get('/', [GmailController::class, 'index'])->name('index');
         Route::patch('/{conversation}/star', [GmailController::class, 'toggleStar'])->name('star');
-        Route::get('/{conversation}/toggle-star', [GmailController::class, 'toggleStar'])->name('star.get');
         Route::patch('/{conversation}/folder', [GmailController::class, 'moveFolder'])->name('folder');
         Route::post('/{conversation}/reply', [GmailController::class, 'reply'])->name('reply');
         Route::post('/{conversation}/create-contact', [GmailController::class, 'createContact'])->name('create-contact');
@@ -62,7 +61,7 @@ Route::middleware('auth')->group(function () {
     // Contacts
     Route::prefix('contacts')->name('contacts.')->group(function () {
         Route::get('/', [ContactController::class, 'index'])->name('index');
-        Route::post('/sync-now', [ContactController::class, 'syncNow'])->name('sync-now');
+        Route::post('/sync-now', [ContactController::class, 'syncNow'])->name('sync-now')->middleware('throttle:5,1');
 
         Route::middleware('admin')->group(function () {
             Route::post('/', [ContactController::class, 'store'])->name('store');
@@ -95,18 +94,23 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{whatsappTemplate}', [WhatsappTemplateController::class, 'destroy'])->name('destroy');
     });
 
-    // Product Master
+    // Product Master — read for everyone, every mutation (including bulk
+    // import, which can overwrite the whole catalog) restricted to admins,
+    // matching the same convention already used for Contacts/Data Sheets.
     Route::prefix('products')->name('products.')->group(function () {
         Route::get('/', [ProductController::class, 'index'])->name('index');
-        Route::post('/', [ProductController::class, 'store'])->name('store');
-        Route::put('/{product}', [ProductController::class, 'update'])->name('update');
-        Route::delete('/{product}', [ProductController::class, 'destroy'])->name('destroy');
-        Route::post('/import', [ProductController::class, 'import'])->name('import');
-        Route::get('/export', [ProductController::class, 'export'])->name('export');
+
+        Route::middleware('admin')->group(function () {
+            Route::post('/', [ProductController::class, 'store'])->name('store');
+            Route::put('/{product}', [ProductController::class, 'update'])->name('update');
+            Route::delete('/{product}', [ProductController::class, 'destroy'])->name('destroy');
+            Route::post('/import', [ProductController::class, 'import'])->name('import');
+            Route::get('/export', [ProductController::class, 'export'])->name('export');
+        });
     });
 
-    // Standard reference tables (Product Master popup)
-    Route::prefix('reference-tables')->name('reference-tables.')->group(function () {
+    // Standard reference tables (Product Master popup) — shared data, admin-managed.
+    Route::middleware('admin')->prefix('reference-tables')->name('reference-tables.')->group(function () {
         Route::post('/', [ReferenceTableController::class, 'store'])->name('store');
         Route::put('/{referenceTable}', [ReferenceTableController::class, 'update'])->name('update');
         Route::delete('/{referenceTable}', [ReferenceTableController::class, 'destroy'])->name('destroy');

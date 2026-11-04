@@ -40,7 +40,7 @@ class ProductController extends Controller
         $data = $this->validated($request);
         $product = Product::create($data);
 
-        Activity::log("Product <b>{$product->name}</b> added", 'bi-box-seam-fill', 'success', $product);
+        Activity::log("Product <b>".e($product->name)."</b> added", 'bi-box-seam-fill', 'success', $product);
 
         return redirect()->route('products.index')->with('success', 'Product added successfully.');
     }
@@ -50,7 +50,7 @@ class ProductController extends Controller
         $data = $this->validated($request, $product);
         $product->update($data);
 
-        Activity::log("Product <b>{$product->name}</b> updated", 'bi-pencil-fill', 'primary', $product);
+        Activity::log("Product <b>".e($product->name)."</b> updated", 'bi-pencil-fill', 'primary', $product);
 
         return redirect()->route('products.index')->with('success', 'Product updated successfully.');
     }
@@ -60,7 +60,7 @@ class ProductController extends Controller
         $name = $product->name;
         $product->delete();
 
-        Activity::log("Product <b>{$name}</b> deleted", 'bi-trash-fill', 'danger');
+        Activity::log("Product <b>".e($name)."</b> deleted", 'bi-trash-fill', 'danger');
 
         return redirect()->route('products.index')->with('success', 'Product deleted.');
     }
