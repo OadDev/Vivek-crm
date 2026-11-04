@@ -7,13 +7,16 @@ name: Deploy to crm.copperfitting.in (SSH)
 # main Hostinger CRM (deploy.yml) -- rsync over SSH, then direct SSH
 # commands for migrate/cache -- instead of FTP + a manually-visited URL.
 #
-# Manual trigger only, on purpose, for the first several runs: this
-# account hosts several other live sites (busbar.in, copperfitting.in
-# itself on WordPress, kanchansales.com, manibhadrafittings.com,
-# medicalpipelines.com, z-lok.com) and nothing here should fire
-# automatically until the path below is proven correct end-to-end.
-# Switch to `push: branches: [main]` once verified, to match deploy.yml.
+# Verified end-to-end on 2026-11-04 (manual run, all steps succeeded,
+# site confirmed loading afterward) -- now auto-deploys on every push to
+# main, same as the main CRM's deploy.yml. This account also hosts
+# several other live sites (busbar.in, copperfitting.in itself on
+# WordPress, kanchansales.com, manibhadrafittings.com,
+# medicalpipelines.com, z-lok.com), all untouched by this workflow --
+# every path here is scoped under DEPLOY_PATH, never a parent directory.
 on:
+  push:
+    branches: [main]
   workflow_dispatch: {}
 
 jobs:
