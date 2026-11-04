@@ -11,7 +11,7 @@ class ContactImporter
     protected const FIELD_ALIASES = [
         'quoteno' => ['quoteno', 'quotationno', 'quotenumber', 'quotationnumber', 'quotenu'],
         'company' => ['company', 'companyname', 'organisation', 'organization'],
-        'name' => ['name', 'fullname', 'contactname'],
+        'name' => ['name', 'fullname', 'contactname', 'contactperson'],
         'email' => ['email', 'emailaddress', 'e-mail', 'mail'],
         'whatsapp' => ['whatsapp', 'whatsappnumber', 'phone', 'mobile', 'contactnumber', 'phonenumber', 'phoneno'],
         'designation' => ['designation', 'title', 'role', 'jobtitle'],
@@ -55,10 +55,27 @@ class ContactImporter
                 continue;
             }
 
+            $key = $quoteNo ? ['quote_no' => $quoteNo] : ['email' => $email];
+
+            $existing = Contact::withTrashed()->where($key)->first();
+
+            // A lead the team explicitly removed (deleted or archived) must
+            // not come back just because it's still present in the source
+            // sheet on the next sync.
+            if ($existing && ($existing->trashed() || $existing->is_archived)) {
+                $skipped++;
+
+                continue;
+            }
+
             $quotationDate = $this->parseDate($mapped['quotationdate'] ?? null);
 
+            // Fall back to the already-stored date when this row's date cell
+            // is blank/unparseable on a resync -- otherwise a lead's status
+            // gets silently reset to Active every time the sheet has a blank
+            // date for it, even though its real quotation date hasn't changed.
             $status = $this->normalizeStatus($mapped['status'] ?? null)
-                ?? Contact::computeStatusFromDate($quotationDate);
+                ?? Contact::computeStatusFromDate($quotationDate ?? $existing?->quotation_date);
 
             $attributes = array_filter([
                 'company' => $company,
@@ -85,19 +102,6 @@ class ContactImporter
                 $attributes['quotation_date'] = $quotationDate;
             }
 
-            $key = $quoteNo ? ['quote_no' => $quoteNo] : ['email' => $email];
-
-            $existing = Contact::withTrashed()->where($key)->first();
-
-            // A lead the team explicitly removed (deleted or archived) must
-            // not come back just because it's still present in the source
-            // sheet on the next sync.
-            if ($existing && ($existing->trashed() || $existing->is_archived)) {
-                $skipped++;
-
-                continue;
-            }
-
             if ($quoteNo) {
                 $attributes['quote_no'] = $quoteNo;
             }
@@ -119,10 +123,26 @@ class ContactImporter
         }
 
         $mapped = [];
+        $claimed = [];
         foreach (self::FIELD_ALIASES as $field => $aliases) {
             foreach ($aliases as $alias) {
                 if (array_key_exists($alias, $normalized) && $normalized[$alias] !== null && $normalized[$alias] !== '') {
                     $mapped[$field] = $normalized[$alias];
+                    $claimed[$alias] = true;
+                    break;
+                }
+            }
+        }
+
+        // The exact-alias list above won't match every header a client's
+        // sheet might actually use for the quotation date (e.g. "Qtn Date",
+        // "Date of Quotation"). Fall back to any remaining, not-yet-claimed
+        // column whose normalized header contains "date", rather than
+        // leaving quotationdate unset and silently losing the value.
+        if (! isset($mapped['quotationdate'])) {
+            foreach ($normalized as $key => $value) {
+                if (! isset($claimed[$key]) && str_contains($key, 'date') && $value !== null && $value !== '') {
+                    $mapped['quotationdate'] = $value;
                     break;
                 }
             }
@@ -155,12 +175,18 @@ class ContactImporter
 
         $value = (string) $value;
 
+        // Google Sheets' CSV export sometimes writes date-time cells as
+        // "04/11/2026 0:00:00" -- match against the date portion only, so
+        // a trailing time doesn't fall through to the ambiguous MM/DD/YYYY
+        // handling below.
+        $datePart = preg_split('/[\sT]+/', trim($value), 2)[0] ?? $value;
+
         // Indian-format sheets write dates as DD/MM/YYYY or DD-MM-YYYY;
         // PHP's default parsing assumes US-style MM/DD/YYYY for ambiguous
         // slash dates (day <= 12), silently producing the wrong date
         // instead of failing -- try day-first explicitly before falling
         // back to Carbon's general parser for anything else.
-        if (preg_match('#^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$#', $value, $m)) {
+        if (preg_match('#^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$#', $datePart, $m)) {
             [$day, $month, $year] = [(int) $m[1], (int) $m[2], (int) $m[3]];
 
             // checkdate() rejects e.g. day 31 in a 30-day month instead of

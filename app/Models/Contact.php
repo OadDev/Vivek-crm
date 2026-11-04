@@ -106,7 +106,11 @@ class Contact extends Model
             return self::STATUS_INACTIVE;
         }
 
-        if ($quotationDate->diffInDays(now()) >= self::FOLLOW_UP_AFTER_DAYS) {
+        // diffInDays() returns an unsigned distance regardless of direction,
+        // so without the isPast() guard a future-dated quotation more than
+        // FOLLOW_UP_AFTER_DAYS out would be miscategorized as Follow-up
+        // instead of Active.
+        if ($quotationDate->isPast() && $quotationDate->diffInDays(now()) >= self::FOLLOW_UP_AFTER_DAYS) {
             return self::STATUS_FOLLOW_UP;
         }
 
