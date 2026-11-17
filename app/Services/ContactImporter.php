@@ -10,7 +10,7 @@ class ContactImporter
 {
     protected const FIELD_ALIASES = [
         'quoteno' => ['quoteno', 'quotationno', 'quotenumber', 'quotationnumber', 'quotenu'],
-        'company' => ['company', 'companyname', 'organisation', 'organization'],
+        'company' => ['company', 'companyname', 'organisation', 'organization', 'party', 'partyname', 'partynames', 'clientname', 'customername'],
         'name' => ['name', 'fullname', 'contactname', 'contactperson'],
         'email' => ['email', 'emailaddress', 'e-mail', 'mail'],
         'whatsapp' => ['whatsapp', 'whatsappnumber', 'phone', 'mobile', 'contactnumber', 'phonenumber', 'phoneno'],
