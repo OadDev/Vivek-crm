@@ -1,0 +1,51 @@
+name: Verify Party Names fix on crm.copperfitting.in
+
+# One-off diagnostic: forces a real contacts sync (same as clicking "Sync
+# Now" in the UI) against the client's actual configured Google Sheet,
+# then queries the database directly to prove real data -- company names
+# sourced from "Party Names" and populated quotation dates -- actually
+# landed, rather than trusting the fix by reasoning alone. Read-mostly:
+# the only write is the sync itself, which is the exact same idempotent
+# action the "Sync Now" button already performs.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      SSH_HOST: "82.25.120.6"
+      SSH_PORT: "65002"
+      SSH_USER: "u829428207"
+      DEPLOY_PATH: "domains/copperfitting.in/public_html/orbitcrm"
+    steps:
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Show configured sync source (sanity check -- which sheet is actually wired up)
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "cd $DEPLOY_PATH/app && php artisan tinker --execute=\"echo json_encode(App\\Models\\ContactSyncSetting::current()->only(['source_type','google_sheet_url','is_enabled','last_synced_at','last_sync_status','last_sync_message']), JSON_PRETTY_PRINT);\""
+
+      - name: Force a real sync now (same action as the 'Sync Now' button)
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "cd $DEPLOY_PATH/app && php artisan contacts:sync --force"
+
+      - name: Show the 10 most-recently-updated Google Sheet contacts (proof the data actually landed)
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "cd $DEPLOY_PATH/app && php artisan tinker --execute=\"echo App\\Models\\Contact::where('source','google_sheet')->latest('updated_at')->take(10)->get(['company','name','email','whatsapp','quotation_date','status','updated_at'])->toJson(JSON_PRETTY_PRINT);\""
+
+      - name: Count contacts with a populated quotation_date vs without, among google_sheet-sourced rows
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "cd $DEPLOY_PATH/app && php artisan tinker --execute=\"echo json_encode(['total_google_sheet_contacts' => App\\Models\\Contact::where('source','google_sheet')->count(), 'with_quotation_date' => App\\Models\\Contact::where('source','google_sheet')->whereNotNull('quotation_date')->count()]);\""
