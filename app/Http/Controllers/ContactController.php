@@ -342,11 +342,15 @@ class ContactController extends Controller
 
     public function importForm()
     {
+        abort_unless(Setting::get('contacts_import_enabled', true), 404);
+
         return view('contacts.import');
     }
 
     public function import(Request $request)
     {
+        abort_unless(Setting::get('contacts_import_enabled', true), 404);
+
         $request->validate(['file' => ['required', 'file', 'mimes:xlsx,xls,csv']]);
 
         $import = new ContactsImport('excel_import');
@@ -371,8 +375,12 @@ class ContactController extends Controller
 
     public function syncSettingsUpdate(Request $request)
     {
+        $allowedSourceTypes = Setting::get('contacts_import_enabled', true)
+            ? ['excel_upload', 'google_sheet']
+            : ['google_sheet'];
+
         $data = $request->validate([
-            'source_type' => ['required', 'in:excel_upload,google_sheet'],
+            'source_type' => ['required', 'in:'.implode(',', $allowedSourceTypes)],
             'google_sheet_url' => ['nullable', 'url'],
             'interval_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
             'is_enabled' => ['nullable', 'boolean'],

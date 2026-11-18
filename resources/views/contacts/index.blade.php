@@ -22,7 +22,9 @@ if (! function_exists('sortLink')) {
   </div>
   <div class="d-flex gap-2 flex-wrap">
     @if (auth()->user()->isAdmin())
+    @if (\App\Models\Setting::get('contacts_import_enabled', true))
     <a href="{{ route('contacts.import.form') }}" class="btn btn-outline-c btn-sm"><i class="bi bi-file-earmark-arrow-up me-1"></i>Import Excel</a>
+    @endif
     <a href="{{ route('contacts.export') }}" class="btn btn-outline-c btn-sm"><i class="bi bi-file-earmark-arrow-down me-1"></i>Export Excel</a>
     <button class="btn btn-primary-c btn-sm" data-bs-toggle="modal" data-bs-target="#modalAddContact"><i class="bi bi-person-plus-fill me-1"></i>Add Contact</button>
     @endif
@@ -66,13 +68,17 @@ if (! function_exists('sortLink')) {
           <label class="form-label">Source Type</label>
           <select class="form-select" name="source_type" id="syncSourceType">
             <option value="google_sheet" {{ $syncSetting->source_type === 'google_sheet' ? 'selected' : '' }}>Google Sheet (public link)</option>
+            @if (\App\Models\Setting::get('contacts_import_enabled', true))
             <option value="excel_upload" {{ $syncSetting->source_type === 'excel_upload' ? 'selected' : '' }}>Uploaded Excel File</option>
+            @endif
           </select>
         </div>
+        @if (\App\Models\Setting::get('contacts_import_enabled', true))
         <div class="col-md-4" id="syncExcelField">
           <label class="form-label">Excel File {{ $syncSetting->excel_original_name ? '(current: '.$syncSetting->excel_original_name.')' : '' }}</label>
           <input type="file" class="form-control" name="sync_file" accept=".xlsx,.xls,.csv">
         </div>
+        @endif
         <div class="col-md-4" id="syncSheetField">
           <label class="form-label">Google Sheet URL</label>
           <input type="url" class="form-control" name="google_sheet_url" value="{{ $syncSetting->google_sheet_url }}" placeholder="https://docs.google.com/spreadsheets/d/...">

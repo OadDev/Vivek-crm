@@ -1,0 +1,70 @@
+name: Backup, wipe, and resync contacts (crm.copperfitting.in)
+
+# One-off, destructive reset: backs up every contact row to a downloadable
+# artifact, permanently deletes all contacts, disables the Excel-import
+# path for this install, and runs a fresh Google-Sheet-only sync so the
+# site starts from a single clean dataset with no leftover duplicates.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    env:
+      SSH_HOST: "82.25.120.6"
+      SSH_PORT: "65002"
+      SSH_USER: "u829428207"
+      DEPLOY_PATH: "domains/copperfitting.in/public_html/orbitcrm"
+    steps:
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Back up all contacts on the server
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "php $DEPLOY_PATH/app/scripts/diagnostics/backup_contacts.php"
+
+      - name: Download the backup file to this runner
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          mkdir -p backup
+          sshpass -p "$SSH_PASS" scp -P "$SSH_PORT" -o StrictHostKeyChecking=no \
+            "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/app/storage/app/backups/contacts_backup_latest.json" ./backup/
+
+      - name: Upload backup as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: contacts-backup
+          path: backup/contacts_backup_latest.json
+          retention-days: 90
+
+      - name: Wipe all contacts
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "php $DEPLOY_PATH/app/scripts/diagnostics/wipe_contacts.php"
+
+      - name: Disable Excel import, force Google Sheet as the only source
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "php $DEPLOY_PATH/app/scripts/diagnostics/disable_excel_import.php"
+
+      - name: Run a fresh sync from the Google Sheet
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "cd $DEPLOY_PATH/app && php artisan contacts:sync --force"
+
+      - name: Final contact count
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "cd $DEPLOY_PATH/app && php artisan tinker --execute=\"echo App\\Models\\Contact::count();\""
