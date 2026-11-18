@@ -1,0 +1,29 @@
+name: Check for stale excel_import duplicate contacts
+
+# One-off, read-only diagnostic: finds companies that have both a stale
+# excel_import-sourced record (no quote_no, no quotation_date -- the
+# "Becon" pattern) AND another record for the same company that's
+# actually good (has a date, or isn't that broken pattern), to see how
+# widespread this duplicate issue actually is before deciding whether to
+# merge anything.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      SSH_HOST: "82.25.120.6"
+      SSH_PORT: "65002"
+      SSH_USER: "u829428207"
+      DEPLOY_PATH: "domains/copperfitting.in/public_html/orbitcrm"
+    steps:
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Count duplicate-company groups and the stale-excel-import pattern
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "cd $DEPLOY_PATH/app && php artisan tinker --execute=\"\$g = App\\Models\\Contact::select('id','company','source','quote_no','email','whatsapp','quotation_date')->whereNotNull('company')->where('company','!=','')->get()->groupBy('company'); \$dup = \$g->filter(fn(\$x) => \$x->count() > 1); \$isStale = fn(\$c) => \$c->source === 'excel_import' && empty(\$c->quote_no) && empty(\$c->quotation_date); \$stale = \$dup->filter(fn(\$x) => \$x->contains(\$isStale) && \$x->contains(fn(\$c) => ! \$isStale(\$c))); echo json_encode(['duplicate_company_groups' => \$dup->count(), 'stale_pattern_groups' => \$stale->count(), 'contacts_in_stale_groups' => \$stale->flatten(1)->count(), 'sample_companies' => \$stale->keys()->take(20)->values()], JSON_PRETTY_PRINT);\""
