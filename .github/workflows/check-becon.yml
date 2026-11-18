@@ -1,0 +1,31 @@
+name: Check Becon record vs raw sheet row
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      SSH_HOST: "82.25.120.6"
+      SSH_PORT: "65002"
+      SSH_USER: "u829428207"
+      DEPLOY_PATH: "domains/copperfitting.in/public_html/orbitcrm"
+      SHEET_CSV_URL: "https://docs.google.com/spreadsheets/d/1Qc7C_O5Mt1CSeKbQj84cOwOeTV6YE-y2n2A47xO3WBI/export?format=csv&gid=0"
+    steps:
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Raw CSV row(s) for Becon
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "head -1 <(curl -sL '$SHEET_CSV_URL'); echo '---'; curl -sL '$SHEET_CSV_URL' | grep -i 'becon'"
+
+      - name: DB record(s) for Becon
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "cd $DEPLOY_PATH/app && php artisan tinker --execute=\"echo App\\Models\\Contact::where('company', 'like', '%Becon%')->orWhere('email', 'like', '%Becon%')->orWhere('email', 'like', '%becon%')->withTrashed()->get(['company','email','whatsapp','quote_no','quotation_date','priority','status','source','is_archived','deleted_at','created_at','updated_at'])->toJson(JSON_PRETTY_PRINT);\""
