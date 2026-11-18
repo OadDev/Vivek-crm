@@ -1,0 +1,27 @@
+name: Check specific contacts missing dates on crm.copperfitting.in
+
+# One-off, read-only diagnostic: looks up the exact contacts shown in the
+# user's screenshot (some with a quotation date, some without) to see
+# their real stored source/quote_no/email/updated_at -- rather than
+# guessing why some rows are blank.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      SSH_HOST: "82.25.120.6"
+      SSH_PORT: "65002"
+      SSH_USER: "u829428207"
+      DEPLOY_PATH: "domains/copperfitting.in/public_html/orbitcrm"
+    steps:
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Look up the exact rows from the screenshot (with and without a date)
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "cd $DEPLOY_PATH/app && php artisan tinker --execute=\"echo App\\Models\\Contact::whereIn('company', ['Om medicare','Mak controls','Diamond Business Shield','Anuj Investment SPC','AT Ceramic Point','Om finmart','ELEMMENTZ INTERNATIONAL LTD.','E 2 ENERGY GROUP OF COMPANY','ECO EXPERTS LLC','GOLDSTAR REFRIGERATION','Metal Alloys Corporation'])->get(['company','quote_no','email','whatsapp','source','quotation_date','status','updated_at','created_at'])->toJson(JSON_PRETTY_PRINT);\""
