@@ -1,0 +1,23 @@
+name: Check why Pranavelayattu row never synced
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      SSH_HOST: "82.25.120.6"
+      SSH_PORT: "65002"
+      SSH_USER: "u829428207"
+      SHEET_CSV_URL: "https://docs.google.com/spreadsheets/d/1Qc7C_O5Mt1CSeKbQj84cOwOeTV6YE-y2n2A47xO3WBI/export?format=csv&gid=0"
+    steps:
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Show header + the Pranavelayattu row in full
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "curl -sL '$SHEET_CSV_URL' > /tmp/sheet.csv; head -1 /tmp/sheet.csv; echo '---'; grep -i 'Pranavelayattu' /tmp/sheet.csv; rm -f /tmp/sheet.csv"
