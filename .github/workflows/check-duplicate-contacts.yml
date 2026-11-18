@@ -3,9 +3,15 @@ name: Check for stale excel_import duplicate contacts
 # One-off, read-only diagnostic: finds companies that have both a stale
 # excel_import-sourced record (no quote_no, no quotation_date -- the
 # "Becon" pattern) AND another record for the same company that's
-# actually good (has a date, or isn't that broken pattern), to see how
-# widespread this duplicate issue actually is before deciding whether to
-# merge anything.
+# actually good, to see how widespread this duplicate issue is before
+# deciding whether to merge anything.
+#
+# Runs scripts/diagnostics/check_duplicate_contacts.php directly on the
+# server (deployed there automatically, same as any other app file) --
+# avoids embedding PHP with $-variables inside a double-quoted SSH
+# --execute string, which breaks because the remote shell ALSO
+# interprets unescaped $ inside its own double quotes (bit us on the
+# first version of this workflow).
 on:
   workflow_dispatch: {}
 
@@ -21,9 +27,9 @@ jobs:
       - name: Install sshpass
         run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
 
-      - name: Count duplicate-company groups and the stale-excel-import pattern
+      - name: Run the duplicate-check script
         env:
           SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
         run: |
           sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
-            "cd $DEPLOY_PATH/app && php artisan tinker --execute=\"\$g = App\\Models\\Contact::select('id','company','source','quote_no','email','whatsapp','quotation_date')->whereNotNull('company')->where('company','!=','')->get()->groupBy('company'); \$dup = \$g->filter(fn(\$x) => \$x->count() > 1); \$isStale = fn(\$c) => \$c->source === 'excel_import' && empty(\$c->quote_no) && empty(\$c->quotation_date); \$stale = \$dup->filter(fn(\$x) => \$x->contains(\$isStale) && \$x->contains(fn(\$c) => ! \$isStale(\$c))); echo json_encode(['duplicate_company_groups' => \$dup->count(), 'stale_pattern_groups' => \$stale->count(), 'contacts_in_stale_groups' => \$stale->flatten(1)->count(), 'sample_companies' => \$stale->keys()->take(20)->values()], JSON_PRETTY_PRINT);\""
+            "php $DEPLOY_PATH/app/scripts/diagnostics/check_duplicate_contacts.php"
