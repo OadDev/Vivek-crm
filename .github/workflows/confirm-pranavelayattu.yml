@@ -1,0 +1,23 @@
+name: Confirm Pranavelayattu now exists
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      SSH_HOST: "82.25.120.6"
+      SSH_PORT: "65002"
+      SSH_USER: "u829428207"
+      DEPLOY_PATH: "domains/copperfitting.in/public_html/orbitcrm"
+    steps:
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Look up Pranavelayattu
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "cd $DEPLOY_PATH/app && php artisan tinker --execute=\"echo App\\Models\\Contact::where('company', 'like', '%Pranavelayattu%')->orWhere('name', 'like', '%Pranavelayattu%')->get(['company','name','whatsapp','email','quote_no','quotation_date','status','source','created_at'])->toJson(JSON_PRETTY_PRINT);\""
