@@ -1,0 +1,35 @@
+name: Check raw sheet rows for the date-missing contacts
+
+# One-off, read-only diagnostic: fetches the actual CSV export of the
+# configured Google Sheet directly (same URL the sync itself hits) and
+# greps for the specific rows whose synced contact has no
+# quotation_date, to see their literal raw cell content rather than
+# guessing whether the date cell is genuinely blank or something else.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      SSH_HOST: "82.25.120.6"
+      SSH_PORT: "65002"
+      SSH_USER: "u829428207"
+      SHEET_CSV_URL: "https://docs.google.com/spreadsheets/d/1Qc7C_O5Mt1CSeKbQj84cOwOeTV6YE-y2n2A47xO3WBI/export?format=csv&gid=0"
+    steps:
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Show header row
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "curl -sL '$SHEET_CSV_URL' | head -1"
+
+      - name: Grep for the affected rows
+        env:
+          SSH_PASS: ${{ secrets.CLIENT_SSH_PASSWORD }}
+        run: |
+          sshpass -p "$SSH_PASS" ssh -p "$SSH_PORT" -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
+            "curl -sL '$SHEET_CSV_URL' | grep -iE 'Mak controls|ELEMMENTZ|E 2 ENERGY|ECO EXPERTS|GOLDSTAR REFRIGERATION|Metal Alloys' | head -40"
