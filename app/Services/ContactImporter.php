@@ -181,22 +181,30 @@ class ContactImporter
         // handling below.
         $datePart = preg_split('/[\sT]+/', trim($value), 2)[0] ?? $value;
 
-        // Indian-format sheets write dates as DD/MM/YYYY or DD-MM-YYYY;
-        // PHP's default parsing assumes US-style MM/DD/YYYY for ambiguous
-        // slash dates (day <= 12), silently producing the wrong date
-        // instead of failing -- try day-first explicitly before falling
-        // back to Carbon's general parser for anything else.
+        // This client's actual sheet writes dates as MM/DD/YYYY -- confirmed
+        // from real rows like "10/22/2026" (Oct 22: 22 can't be a month, so
+        // this is unambiguous), which an earlier version of this code
+        // forced into day-first and rejected outright (checkdate(22, 10, ...)
+        // is invalid), silently losing the date. Try both orderings and use
+        // whichever is a real calendar date; when both are valid (day and
+        // month both <= 12, genuinely ambiguous), prefer MM/DD/YYYY to match
+        // this sheet's confirmed format rather than guessing day-first.
         if (preg_match('#^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$#', $datePart, $m)) {
-            [$day, $month, $year] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+            [$first, $second, $year] = [(int) $m[1], (int) $m[2], (int) $m[3]];
 
-            // checkdate() rejects e.g. day 31 in a 30-day month instead of
-            // letting DateTime silently overflow into the next month.
-            if (! checkdate($month, $day, $year)) {
+            if (checkdate($first, $second, $year)) {
+                [$month, $day] = [$first, $second];
+            } elseif (checkdate($second, $first, $year)) {
+                [$month, $day] = [$second, $first];
+            } else {
+                // Neither ordering is a real calendar date (e.g. day 31 in
+                // a 30-day month) -- fail cleanly instead of letting
+                // DateTime silently overflow into the next month.
                 return null;
             }
 
             try {
-                return Carbon::createFromFormat('d/m/Y', "{$m[1]}/{$m[2]}/{$m[3]}")->startOfDay();
+                return Carbon::createFromFormat('n/j/Y', "{$month}/{$day}/{$year}")->startOfDay();
             } catch (\Throwable) {
                 return null;
             }
