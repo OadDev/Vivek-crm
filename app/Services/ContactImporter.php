@@ -45,17 +45,26 @@ class ContactImporter
             $name = $mapped['name'] ?? $company;
             $quoteNo = isset($mapped['quoteno']) ? (string) $mapped['quoteno'] : null;
             $email = $mapped['email'] ?? null;
+            $whatsapp = $mapped['whatsapp'] ?? null;
 
             // Every row needs an identity (company or name) and a way to key
-            // off it (quote number, falling back to email for non-quotation
-            // sheets) — otherwise there's nothing to track it by.
-            if (empty($name) || (empty($quoteNo) && empty($email))) {
+            // off it: quote number, then email, then WhatsApp number as a
+            // last resort. Requiring only quote_no/email silently dropped
+            // every inquiry-stage lead that has neither -- a real row with
+            // a company name, date, and phone number but no quote number or
+            // email yet was never even created, with nothing in the sync
+            // result to show it happened.
+            if (empty($name) || (empty($quoteNo) && empty($email) && empty($whatsapp))) {
                 $skipped++;
 
                 continue;
             }
 
-            $key = $quoteNo ? ['quote_no' => $quoteNo] : ['email' => $email];
+            $key = match (true) {
+                (bool) $quoteNo => ['quote_no' => $quoteNo],
+                (bool) $email => ['email' => $email],
+                default => ['whatsapp' => $whatsapp],
+            };
 
             $existing = Contact::withTrashed()->where($key)->first();
 
@@ -79,7 +88,7 @@ class ContactImporter
 
             $attributes = array_filter([
                 'company' => $company,
-                'whatsapp' => $mapped['whatsapp'] ?? null,
+                'whatsapp' => $whatsapp,
                 'designation' => $mapped['designation'] ?? null,
                 'sales_man' => $mapped['salesman'] ?? null,
                 'gst_number' => $mapped['gstnumber'] ?? null,
